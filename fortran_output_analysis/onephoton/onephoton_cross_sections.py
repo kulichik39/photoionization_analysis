@@ -79,7 +79,7 @@ def get_partial_integrated_cross_section_1_channel(
         k = wavenumber(ekin, relativistic=relativistic)  # wavenumber vector
         final_state = channels.final_states[final_kappa]
         column_index = final_state.pcur_column_index
-        amp_data = channels.raw_amp_data[:, column_index]
+        amp_data = channels.get_raw_amp_data(column_index)
         amp_data = np.nan_to_num(
             amp_data, nan=0.0, posinf=0.0, neginf=0.0
         )  # replace all nan or inf values with 0.0

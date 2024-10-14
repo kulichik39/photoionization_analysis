@@ -92,6 +92,43 @@ class Channels:
 
             pcur_column_index += 1
 
+    def get_raw_omega_data(self):
+        """
+        Returns:
+        raw photon energies in Hartree
+        """
+        return self.raw_data[:, 0]
+
+    def get_raw_amp_data(self, column_index):
+        """
+        Params:
+        column_index - index corresponding to a final state
+
+        Returns:
+        raw amplitudes data
+        """
+        return self.raw_amp_data[:, column_index]
+
+    def get_raw_phaseF_data(self, column_index):
+        """
+        Params:
+        column_index - index corresponding to a final state
+
+        Returns:
+        raw data for the larger component's phase
+        """
+        return self.raw_phaseF_data[:, column_index]
+
+    def get_raw_phaseG_data(self, column_index):
+        """
+        Params:
+        column_index - index corresponding to a final state
+
+        Returns:
+        raw data for the smaller component's phase
+        """
+        return self.raw_phaseG_data[:, column_index]
+
     def get_rate_for_channel(self, final_kappa):
         """
         Extracts raw rate data from the Fortran output file for the given final state.

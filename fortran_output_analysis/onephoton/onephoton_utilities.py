@@ -52,9 +52,9 @@ def get_omega_Hartree(one_photon: OnePhoton, n_qn, hole_kappa):
 
     channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
 
-    omega_Hartree = channels.raw_data[
-        :, 0
-    ]  # omega energies in Hartree from the output file.
+    omega_Hartree = (
+        channels.get_raw_omega_data()
+    )  # omega energies in Hartree from the output file.
 
     return omega_Hartree
 
@@ -127,9 +127,9 @@ def get_matrix_elements_for_final_state(
     # We assume that the data is sorted the same in amp_all and phaseF_all as in pcur_all
     # this is true at time of writing (2022-05-23).
     column_index = final_state.pcur_column_index
-    return channels.raw_amp_data[:, column_index] * [
-        np.exp(1j * channels.raw_phaseF_data[:, column_index]),
-        np.exp(1j * channels.raw_phaseG_data[:, column_index]),
+    return channels.get_raw_amp_data(column_index) * [
+        np.exp(1j * channels.get_raw_phaseF_data(column_index)),
+        np.exp(1j * channels.get_raw_phaseG_data(column_index)),
     ]
 
 
