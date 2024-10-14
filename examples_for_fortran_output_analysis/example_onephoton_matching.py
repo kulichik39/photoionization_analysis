@@ -18,9 +18,10 @@ NOTE: all the detailed explanation for the case of one simulation only is shown 
 example_onephoton_matching.py
 """
 
-# append relcode_py to our system path to easily import all the necessary modules
-relcode_py_repo_path = "D:\\relcode_py"
-sys.path.append(relcode_py_repo_path)
+# append this repository to our system path to easily import all the necessary modules
+repo_path = "D:\\photoionization_analysis"
+sys.path.append(repo_path)
+
 
 # initialize two one_photon objects, the hole and load this hole in both
 from fortran_output_analysis.onephoton.onephoton import OnePhoton

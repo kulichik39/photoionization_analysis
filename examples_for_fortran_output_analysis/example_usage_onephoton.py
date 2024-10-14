@@ -7,20 +7,20 @@ from matplotlib import pyplot as plt
 This code will help you understand how to use OnePhoton class and different onephoton_...  
 namespaces to proccess Fortran output data for the one photon case.
 
-At first, we need to import modules from the relcode_py repository. We have two possible ways
+At first, we need to import modules from this repository. We have two possible ways
 to do this:
 1. Add __init__.py file to this folder as well as all the folders from which we import code 
 and then run this script using "python" command with "-m" flag (run module as a script). 
 The full command is: "python -m examples_for_fortran_output_analysis.example_usage_onephoton".
-2. Add relcode_py repository to our system path through sys.path.append("path/to/relcode_py")
+2. Add this repository to our system path through sys.path.append("path/to/this/repo")
 and run this script as usual.
 
 In this example, we'll use the second approach.
 """
 
-# append relcode_py to our system path
-relcode_py_repo_path = "D:\\relcode_py"
-sys.path.append(relcode_py_repo_path)
+# append this repository to our system path
+repo_path = "D:\\photoionization_analysis"
+sys.path.append(repo_path)
 
 # now we can easily import our OnePhoton class
 from fortran_output_analysis.onephoton.onephoton import OnePhoton
