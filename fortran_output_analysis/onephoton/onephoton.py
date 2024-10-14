@@ -57,7 +57,7 @@ class Channels:
 
         self.path_to_pcur = path_to_pcur
         self.hole = hole
-        self.final_states = {}
+        self.__final_states = {}
         self.raw_data = load_raw_data(path_to_pcur)
         self.raw_amp_data = load_raw_data(path_to_amp_all)
         self.raw_phaseF_data = load_raw_data(path_to_phaseF_all)
@@ -88,9 +88,17 @@ class Channels:
         pcur_column_index = 1
         for kappa in possible_final_kappas:
             if kappa != 0:
-                self.final_states[kappa] = FinalState(kappa, pcur_column_index)
+                self.__final_states[kappa] = FinalState(kappa, pcur_column_index)
 
             pcur_column_index += 1
+
+    def get_all_final_states(self):
+        """
+        Returns:
+        all loaded final states
+        """
+
+        return self.__final_states
 
     def get_final_state(self, final_kappa):
         """
@@ -105,7 +113,7 @@ class Channels:
 
         self.assert_final_kappa(final_kappa)
 
-        return self.final_states[final_kappa]
+        return self.__final_states[final_kappa]
 
     def assert_final_kappa(self, final_kappa):
         """
@@ -131,7 +139,7 @@ class Channels:
         True if the final state is within ionization channels, False otherwise.
         """
 
-        return final_kappa in self.final_states
+        return final_kappa in self.__final_states
 
     def get_raw_omega_data(self):
         """
@@ -405,6 +413,7 @@ class OnePhoton:
             )
             self.num_channels += 1
 
+    # TODO: relocate this method to the Hole class
     @staticmethod
     def __load_hole_binding_energy(
         hole: Hole, path_to_data, path_to_hf_energies, path_to_omega, path_to_sp_ekin
@@ -542,8 +551,9 @@ class OnePhoton:
         channels = self.get_channels_for_hole(n_qn, hole_kappa)
         hole = self.get_hole_object(n_qn, hole_kappa)
         hole_name = hole.name
-        for final_state_key in channels.final_states.keys():
-            final_state = channels.final_states[final_state_key]
+        final_states = channels.get_all_final_states()
+        for final_kappa in final_states.keys():
+            final_state = channels.get_final_state(final_kappa)
             channel_labels.append(hole_name + " to " + final_state.name)
 
         return channel_labels

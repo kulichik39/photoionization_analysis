@@ -124,6 +124,10 @@ def get_partial_integrated_cross_section_multiple_channels(
         mode == "amp"
     ), "mode parameter can only take 'pcur' or 'amp' values"
 
+    assert (
+        len(final_kappas) > 0
+    ), "The number of ionization channels must be greater than zero!"
+
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
     ekin_eV = get_electron_kinetic_energy_eV(one_photon, n_qn, hole_kappa)
@@ -178,7 +182,8 @@ def get_total_integrated_cross_section_for_hole(
 
     channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
 
-    final_kappas = list(channels.final_states.keys())
+    final_states = channels.get_all_final_states()
+    final_kappas = list(final_states.keys())
 
     ekin_eV, total_cs = get_partial_integrated_cross_section_multiple_channels(
         one_photon,
