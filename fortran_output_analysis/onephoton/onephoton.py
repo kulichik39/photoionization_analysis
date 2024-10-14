@@ -92,6 +92,47 @@ class Channels:
 
             pcur_column_index += 1
 
+    def get_final_state(self, final_kappa):
+        """
+        Returns final state with the given kappa.
+
+        Params:
+        final_kappa - kappa value of the final state
+
+        Returns:
+        final_state - object of the FinalState class
+        """
+
+        self.assert_final_kappa(final_kappa)
+
+        return self.final_states[final_kappa]
+
+    def assert_final_kappa(self, final_kappa):
+        """
+        Assertion of the final state. Checks if the given final state
+        is within possible ionization channels.
+
+        Params:
+        final_kappa - kappa value of the final state
+        """
+
+        assert self.check_final_kappa(
+            final_kappa
+        ), f"The final state with kappa {final_kappa} is not within channels for {self.hole.name} hole!"
+
+    def check_final_kappa(self, final_kappa):
+        """
+        Checks if the given final state is within ionization channels.
+
+        Params:
+        final_kappa - kappa value of the final state
+
+        Returns:
+        True if the final state is within ionization channels, False otherwise.
+        """
+
+        return final_kappa in self.final_states
+
     def get_raw_omega_data(self):
         """
         Returns:
@@ -99,50 +140,60 @@ class Channels:
         """
         return self.raw_data[:, 0]
 
-    def get_raw_amp_data(self, column_index):
+    def get_raw_amp_data(self, final_state: FinalState):
         """
+        Returns raw amplitude data for the given final state.
+
         Params:
-        column_index - index corresponding to a final state
+        final_state - object of the FinalState class
 
         Returns:
         raw amplitudes data
         """
+        column_index = final_state.pcur_column_index
+
         return self.raw_amp_data[:, column_index]
 
-    def get_raw_phaseF_data(self, column_index):
+    def get_raw_phaseF_data(self, final_state: FinalState):
         """
+        Returns raw phase of the larger component for the given final state.
+
         Params:
-        column_index - index corresponding to a final state
+        final_state - object of the FinalState class
 
         Returns:
-        raw data for the larger component's phase
+        raw phase of the larger component
         """
+        column_index = final_state.pcur_column_index
+
         return self.raw_phaseF_data[:, column_index]
 
-    def get_raw_phaseG_data(self, column_index):
+    def get_raw_phaseG_data(self, final_state: FinalState):
         """
+        Returns raw phase of the smaller component for the given final state.
+
         Params:
-        column_index - index corresponding to a final state
+        final_state - object of the FinalState class
 
         Returns:
-        raw data for the smaller component's phase
+        raw phase of the smaller component
         """
+        column_index = final_state.pcur_column_index
+
         return self.raw_phaseG_data[:, column_index]
 
-    def get_rate_for_channel(self, final_kappa):
+    def get_raw_rate(self, final_state: FinalState):
         """
-        Extracts raw rate data from the Fortran output file for the given final state.
+        Returns raw probability current for the given final state.
 
         Params:
-        final_kappa - kappa value of the final state
+        final_state - object of the FinalState class
 
         Returns:
-        rate - array with the raw rate data for the given final state
+        raw probability current
         """
-        state = self.final_states[final_kappa]
-        column_index = state.pcur_column_index
-        rate = self.raw_data[:, column_index]
-        return rate
+        column_index = final_state.pcur_column_index
+        return self.raw_data[:, column_index]
 
     @staticmethod
     def final_kappas(hole_kappa, only_reachable=True):
@@ -438,14 +489,14 @@ class OnePhoton:
         hole_kappa - kappa value of the hole
 
         Returns:
-        channel - channel for the given hole
+        channels - channels for the given hole
         """
 
         self.assert_hole_load(n_qn, hole_kappa)
 
-        channel = self.__channels[(n_qn, hole_kappa)]
+        channels = self.__channels[(n_qn, hole_kappa)]
 
-        return channel
+        return channels
 
     def get_all_channels(self):
         """
@@ -472,40 +523,6 @@ class OnePhoton:
         hole = channels.hole
 
         return hole
-
-    def assert_final_kappa(self, n_qn, hole_kappa, final_kappa):
-        """
-        Assertion of the final state. Checks if the given final state
-        is within possible ionization channels for the given hole.
-
-        Params:
-        n_qn - principal quantum number of the hole
-        hole_kappa - kappa value of the hole
-        final_kappa - kappa value of the final state
-        """
-
-        assert self.check_final_kappa(
-            n_qn, hole_kappa, final_kappa
-        ), f"The final state with kappa {final_kappa} is not within channels for {construct_hole_name(self.name, n_qn, hole_kappa)} hole!"
-
-    def check_final_kappa(self, n_qn, hole_kappa, final_kappa):
-        """
-        Checks if the given final state is within ionization channels of the given hole.
-
-        Params:
-        n_qn - principal quantum number of the hole
-        hole_kappa - kappa value of the hole
-        final_kappa - kappa value of the final state
-
-        Returns:
-        True if the final state is within ionization channels, False otherwise.
-        """
-
-        self.assert_hole_load(n_qn, hole_kappa)
-
-        channels = self.get_channels_for_hole(n_qn, hole_kappa)
-
-        return final_kappa in channels.final_states
 
     def get_channel_labels_for_hole(self, n_qn, hole_kappa):
         """

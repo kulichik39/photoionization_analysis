@@ -65,21 +65,20 @@ def get_partial_integrated_cross_section_1_channel(
         mode == "amp"
     ), "mode parameter can only take 'pcur' or 'amp' values"
 
-    one_photon.assert_final_kappa(n_qn, hole_kappa, final_kappa)
+    one_photon.assert_hole_load(n_qn, hole_kappa)
 
     channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
+    final_state = channels.get_final_state(final_kappa)
 
     omega = get_omega_Hartree(one_photon, n_qn, hole_kappa)
 
     if mode == "pcur":
-        rate = channels.get_rate_for_channel(final_kappa)
+        rate = channels.get_raw_rate(final_state)
         cross_section = convert_rate_to_cross_section(rate, omega, divide_omega)
     else:
         ekin = get_electron_kinetic_energy_Hartree(one_photon, n_qn, hole_kappa)
         k = wavenumber(ekin, relativistic=relativistic)  # wavenumber vector
-        final_state = channels.final_states[final_kappa]
-        column_index = final_state.pcur_column_index
-        amp_data = channels.get_raw_amp_data(column_index)
+        amp_data = channels.get_raw_amp_data(final_state)
         amp_data = np.nan_to_num(
             amp_data, nan=0.0, posinf=0.0, neginf=0.0
         )  # replace all nan or inf values with 0.0
@@ -131,7 +130,6 @@ def get_partial_integrated_cross_section_multiple_channels(
     cross_section = np.zeros(len(ekin_eV))
 
     for final_kappa in final_kappas:
-        one_photon.assert_final_kappa(n_qn, hole_kappa, final_kappa)
         _, channel_cs = get_partial_integrated_cross_section_1_channel(
             one_photon,
             n_qn,

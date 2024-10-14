@@ -120,16 +120,14 @@ def get_matrix_elements_for_final_state(
     matrix elements after one photon
     """
 
-    one_photon.assert_final_kappa(n_qn, hole_kappa, final_kappa)
+    one_photon.assert_hole_load(n_qn, hole_kappa)
 
     channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
-    final_state = channels.final_states[final_kappa]
-    # We assume that the data is sorted the same in amp_all and phaseF_all as in pcur_all
-    # this is true at time of writing (2022-05-23).
-    column_index = final_state.pcur_column_index
-    return channels.get_raw_amp_data(column_index) * [
-        np.exp(1j * channels.get_raw_phaseF_data(column_index)),
-        np.exp(1j * channels.get_raw_phaseG_data(column_index)),
+    final_state = channels.get_final_state(final_kappa)
+
+    return channels.get_raw_amp_data(final_state) * [
+        np.exp(1j * channels.get_raw_phaseF_data(final_state)),
+        np.exp(1j * channels.get_raw_phaseG_data(final_state)),
     ]
 
 
