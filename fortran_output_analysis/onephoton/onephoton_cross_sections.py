@@ -11,7 +11,7 @@ from fortran_output_analysis.common_utility import (
     convert_amplitude_to_cross_section,
     Hole,
 )
-from fortran_output_analysis.onephoton.onephoton import OnePhoton
+from fortran_output_analysis.onephoton.onephoton import OnePhoton, Channels
 from fortran_output_analysis.onephoton.onephoton_utilities import (
     get_omega_Hartree,
     get_electron_kinetic_energy_eV,
@@ -180,10 +180,7 @@ def get_total_integrated_cross_section_for_hole(
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
-    channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
-
-    final_states = channels.get_all_final_states()
-    final_kappas = list(final_states.keys())
+    final_kappas = Channels.final_kappas(hole_kappa, only_reachable=True)
 
     ekin_eV, total_cs = get_partial_integrated_cross_section_multiple_channels(
         one_photon,
