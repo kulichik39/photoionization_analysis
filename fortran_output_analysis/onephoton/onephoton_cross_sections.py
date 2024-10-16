@@ -38,7 +38,7 @@ def get_partial_integrated_cross_section_1_channel(
     relativistic=True,
 ):
     """
-    Calculates integrated cross section for only one ionization channel (final state) of
+    Calculates integrated cross section for only one ionization path (final state) of
     the given hole.
     Depending on conventions when creating the dipole elements in the Fortran program we
     might have to divide or multiply by the photon energy (omega) when calculating
@@ -68,17 +68,17 @@ def get_partial_integrated_cross_section_1_channel(
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
     channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
-    final_state = channels.get_final_state(final_kappa)
+    ionisation_path = channels.get_ionisation_path(final_kappa)
 
     omega = get_omega_Hartree(one_photon, n_qn, hole_kappa)
 
     if mode == "pcur":
-        rate = channels.get_raw_rate(final_state)
+        rate = channels.get_raw_rate(ionisation_path)
         cross_section = convert_rate_to_cross_section(rate, omega, divide_omega)
     else:
         ekin = get_electron_kinetic_energy_Hartree(one_photon, n_qn, hole_kappa)
         k = wavenumber(ekin, relativistic=relativistic)  # wavenumber vector
-        amp_data = channels.get_raw_amp_data(final_state)
+        amp_data = channels.get_raw_amp_data(ionisation_path)
         amp_data = np.nan_to_num(
             amp_data, nan=0.0, posinf=0.0, neginf=0.0
         )  # replace all nan or inf values with 0.0
@@ -157,7 +157,7 @@ def get_total_integrated_cross_section_for_hole(
     relativistic=True,
 ):
     """
-    Calculates total integrated cross section: sums over all possible channels (final states)
+    Calculates total integrated cross section: sums over all possible ionisation paths (final states)
     for the give hole.
 
     Params:
@@ -209,8 +209,8 @@ def get_photoabsorption_cross_section(one_photon: OnePhoton, photon_energy_eV):
 
     one_photon.assert_diag_data_load()
 
-    M = one_photon.diag_matrix_elements
-    eigvals = one_photon.diag_eigenvalues
+    M = one_photon.get_diag_matrix_elements()
+    eigvals = one_photon.get_diag_eigenvalues()
 
     au_to_Mbarn = (0.529177210903) ** 2 * 100
     convert_factor = 4.0 * np.pi / 3.0 * fine_structure * au_to_Mbarn

@@ -82,11 +82,11 @@ one_photon.load_hole(hole_n_6p3half, hole_kappa_6p3half, data_dir)
 labels_from_6p3half = one_photon.get_channel_labels_for_hole(
     hole_n_6p3half, hole_kappa_6p3half
 )
-print(f"Possible channels for Radon 6p_3/2: {labels_from_6p3half}")
+print(f"\n\nPossible channels for Radon 6p_3/2: {labels_from_6p3half}\n\n")
 
 # We can print binding energy for 6p_3/2
 print(
-    f"Binding energy for Radon 6p_3/2 is {one_photon.get_hole_object(hole_n_6p3half, hole_kappa_6p3half).binding_energy}"
+    f"\n\nBinding energy for Radon 6p_3/2 is {one_photon.get_hole_object(hole_n_6p3half, hole_kappa_6p3half).binding_energy}\n\n"
 )
 
 
@@ -99,11 +99,11 @@ one_photon.load_hole(hole_n_6p1half, hole_kappa_6p1half, data_dir)
 labels_from_6p1half = one_photon.get_channel_labels_for_hole(
     hole_n_6p1half, hole_kappa_6p1half
 )
-print(f"Possible channels for Radon 6p_1/2: {labels_from_6p1half}")
+print(f"\n\nPossible channels for Radon 6p_1/2: {labels_from_6p1half}\n\n")
 
 # We can print binding energy for 6p_1/2
 print(
-    f"Binding energy for Radon 6p_1/2 is {one_photon.get_hole_object(hole_n_6p1half, hole_kappa_6p1half).binding_energy}"
+    f"\n\nBinding energy for Radon 6p_1/2 is {one_photon.get_hole_object(hole_n_6p1half, hole_kappa_6p1half).binding_energy}\n\n"
 )
 
 # try to reload 6p_1/2 hole with the same data (outputs information message)

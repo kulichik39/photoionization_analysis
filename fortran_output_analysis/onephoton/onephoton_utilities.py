@@ -103,12 +103,12 @@ def get_electron_kinetic_energy_eV(one_photon: OnePhoton, n_qn, hole_kappa):
     )
 
 
-def get_matrix_elements_for_final_state(
+def get_matrix_elements_for_ionisation_path(
     one_photon: OnePhoton, n_qn, hole_kappa, final_kappa
 ):
     """
     Computes matrix elements after one photon as amp*[e^(i*phase_of_F),
-    e^(i*phase_of_G)] for the given hole and final state.
+    e^(i*phase_of_G)] for the given hole and ionisation path.
 
     Params:
     one_photon - object of the OnePhoton class with some loaded holes
@@ -123,17 +123,19 @@ def get_matrix_elements_for_final_state(
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
     channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
-    final_state = channels.get_final_state(final_kappa)
+    ionisation_path = channels.get_ionisation_path(final_kappa)
 
-    return channels.get_raw_amp_data(final_state) * [
-        np.exp(1j * channels.get_raw_phaseF_data(final_state)),
-        np.exp(1j * channels.get_raw_phaseG_data(final_state)),
+    return channels.get_raw_amp_data(ionisation_path) * [
+        np.exp(1j * channels.get_raw_phaseF_data(ionisation_path)),
+        np.exp(1j * channels.get_raw_phaseG_data(ionisation_path)),
     ]
 
 
-def get_matrix_elements_for_all_final_states(one_photon: OnePhoton, n_qn, hole_kappa):
+def get_matrix_elements_for_all_ionisation_paths(
+    one_photon: OnePhoton, n_qn, hole_kappa
+):
     """
-    Computes matrix elements for all possible final states of the given hole.
+    Computes matrix elements for all possible ionisation paths of the given hole.
 
     Params:
     one_photon - object of the OnePhoton class with some loaded holes
@@ -153,7 +155,7 @@ def get_matrix_elements_for_all_final_states(one_photon: OnePhoton, n_qn, hole_k
     first_of_final_kappas = final_kappas[0]
 
     # [0] since we are only interested in the largest relativistic component
-    matrix_elements = get_matrix_elements_for_final_state(
+    matrix_elements = get_matrix_elements_for_ionisation_path(
         one_photon, n_qn, hole_kappa, first_of_final_kappas
     )[0]
 
@@ -164,7 +166,7 @@ def get_matrix_elements_for_all_final_states(one_photon: OnePhoton, n_qn, hole_k
 
     for i in range(1, len(final_kappas)):
         final_kappa = final_kappas[i]
-        M[i, :] = get_matrix_elements_for_final_state(
+        M[i, :] = get_matrix_elements_for_ionisation_path(
             one_photon, n_qn, hole_kappa, final_kappa
         )[0]
 
@@ -173,7 +175,7 @@ def get_matrix_elements_for_all_final_states(one_photon: OnePhoton, n_qn, hole_k
 
 def get_coulomb_phase(one_photon: OnePhoton, n_qn, hole_kappa, Z):
     """
-    Computes Coulomb phase for all the final states of the given hole.
+    Computes Coulomb phase for all the ionisation paths of the given hole.
 
     Params:
     one_photon - object of the OnePhoton class with some loaded holes
@@ -204,7 +206,7 @@ def get_coulomb_phase(one_photon: OnePhoton, n_qn, hole_kappa, Z):
 
 def get_matrix_elements_with_coulomb_phase(one_photon: OnePhoton, n_qn, hole_kappa, Z):
     """
-    Computes matrix elements for all possible final states of the given hole
+    Computes matrix elements for all possible ionisation paths of the given hole
     and adds Coulomb phase to them.
 
     Params:
@@ -219,7 +221,7 @@ def get_matrix_elements_with_coulomb_phase(one_photon: OnePhoton, n_qn, hole_kap
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
-    M = get_matrix_elements_for_all_final_states(one_photon, n_qn, hole_kappa)
+    M = get_matrix_elements_for_all_ionisation_paths(one_photon, n_qn, hole_kappa)
     coul_phase = get_coulomb_phase(one_photon, n_qn, hole_kappa, Z)  # Coulomb phase
 
     assert (
@@ -294,7 +296,7 @@ def match_absorption_and_emission_matrices_1sim(
 
     assert (
         M_abs.shape[0] == M_emi.shape[0]
-    ), "The number of final states in absorption and emission matrices is different!"
+    ), "The number of ionisation paths in absorption and emission matrices is different!"
 
     M_emi_matched = np.zeros(
         (M_emi.shape[0], M_emi.shape[1] - 2 * steps_per_IR_photon),
@@ -400,7 +402,7 @@ def match_absorption_and_emission_matrices_2sim(
 
     assert (
         M_abs.shape[0] == M_emi.shape[0]
-    ), "The number of final states in absorption and emission matrices is different!"
+    ), "The number of ionisation_paths in absorption and emission matrices is different!"
 
     M_emi_matched = np.zeros(
         (M_emi.shape[0], len(energies_final)),

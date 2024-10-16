@@ -12,32 +12,34 @@ from fortran_output_analysis.common_utility import (
 )
 
 
-class FinalState:
+class IonisationPath:
     """
-    Stores inforation about final state in an inonization channel.
+    Stores inforation about an ionisation path in the one photon case.
     """
 
-    def __init__(self, kappa, pcur_col_idx):
+    def __init__(self, kappa, col_idx):
         """
         Params:
         kappa - kappa value of the final state
-        pcur_col_idx - index of the column in pcur_all.dat file corresponding to this
+        col_idx - index of the column in the raw data files corresponding to this
         final state
         """
         self.kappa = kappa
         self.l = l_from_kappa(kappa)
         self.j = j_from_kappa(kappa)
         self.name = l_to_str(self.l) + ("_{%i/2}" % (j_from_kappa_int(kappa)))
-        self.pcur_column_index = pcur_col_idx
+        self.column_index = col_idx
 
 
 class Channels:
     """
     Stores inforation about ionization channels for the given hole.
+    Contains methods to get raw loaded data for those channels.
     """
 
     def __init__(
         self,
+        path_to_omega,
         path_to_pcur,
         path_to_amp_all,
         path_to_phaseF_all,
@@ -46,6 +48,8 @@ class Channels:
     ):
         """
         Params:
+        path_to_omega - path to the omega.dat file for the given hole (usually in
+        pert folders)
         path_to_pcur - path to file with probabilty current for one photon
         path_to_amp_all - path to file with amplitudes for one photon
         path_to_phaseF_all - path to file with the phase for larger relativistic component
@@ -55,18 +59,22 @@ class Channels:
         hole - object of the Hole class containing hole's parameters
         """
 
-        self.path_to_pcur = path_to_pcur
         self.hole = hole
-        self.__final_states = {}
-        self.raw_data = load_raw_data(path_to_pcur)
-        self.raw_amp_data = load_raw_data(path_to_amp_all)
-        self.raw_phaseF_data = load_raw_data(path_to_phaseF_all)
-        self.raw_phaseG_data = load_raw_data(path_to_phaseG_all)
-        self.add_final_states()
+        self.__ionisation_paths = {}
+        self.__add_ionisation_path()
+        self.__raw_omega_data = load_raw_data(path_to_omega)
+        raw_rate_data = load_raw_data(path_to_pcur)
+        self.__raw_rate_data = raw_rate_data[:, 1:]  # skip the first column with omegas
+        raw_amp_data = load_raw_data(path_to_amp_all)
+        self.__raw_amp_data = raw_amp_data[:, 1:]
+        raw_phaseF_data = load_raw_data(path_to_phaseF_all)
+        self.__raw_phaseF_data = raw_phaseF_data[:, 1:]
+        raw_phaseG_data = load_raw_data(path_to_phaseG_all)
+        self.__raw_phaseG_data = raw_phaseG_data[:, 1:]
 
-    def add_final_states(self):
+    def __add_ionisation_path(self):
         """
-        Adds final states of the hole's ionization channels. Excludes forbidden channels with
+        Adds possbile hole's ionization paths. Excludes forbidden channels with
         kappa = 0.
         """
         kappa_hole = self.hole.kappa
@@ -85,40 +93,40 @@ class Channels:
         possible_final_kappas = self.final_kappas(kappa_hole, only_reachable=False)
 
         # This is for getting the data from the pcur files. The first column is the photon energy.
-        pcur_column_index = 1
+        column_index = 0
         for kappa in possible_final_kappas:
             if kappa != 0:
-                self.__final_states[kappa] = FinalState(kappa, pcur_column_index)
+                self.__ionisation_paths[kappa] = IonisationPath(kappa, column_index)
 
-            pcur_column_index += 1
+            column_index += 1
 
-    def get_all_final_states(self):
+    def get_all_ionisation_paths(self):
         """
         Returns:
-        all loaded final states
+        all loaded ionisation paths
         """
 
-        return self.__final_states
+        return self.__ionisation_paths
 
-    def get_final_state(self, final_kappa):
+    def get_ionisation_path(self, final_kappa):
         """
-        Returns final state with the given kappa.
+        Returns ionisation paths for the given final kappa.
 
         Params:
         final_kappa - kappa value of the final state
 
         Returns:
-        final_state - object of the FinalState class
+        ionisation_path - object of the IonisationPath class
         """
 
         self.assert_final_kappa(final_kappa)
 
-        return self.__final_states[final_kappa]
+        return self.__ionisation_paths[final_kappa]
 
     def assert_final_kappa(self, final_kappa):
         """
-        Assertion of the final state. Checks if the given final state
-        is within possible ionization channels.
+        Assertion of the final state. Checks if the given final kappa
+        is within possible ionization paths.
 
         Params:
         final_kappa - kappa value of the final state
@@ -130,78 +138,78 @@ class Channels:
 
     def check_final_kappa(self, final_kappa):
         """
-        Checks if the given final state is within ionization channels.
+        Checks if the given final state is within ionization paths.
 
         Params:
         final_kappa - kappa value of the final state
 
         Returns:
-        True if the final state is within ionization channels, False otherwise.
+        True if the final state is within ionization paths, False otherwise.
         """
 
-        return final_kappa in self.__final_states
+        return final_kappa in self.__ionisation_paths
 
     def get_raw_omega_data(self):
         """
         Returns:
         raw photon energies in Hartree
         """
-        return self.raw_data[:, 0]
+        return self.__raw_omega_data
 
-    def get_raw_amp_data(self, final_state: FinalState):
+    def get_raw_amp_data(self, ionisation_path: IonisationPath):
         """
-        Returns raw amplitude data for the given final state.
+        Returns raw amplitude data for the given ionisation path.
 
         Params:
-        final_state - object of the FinalState class
+        ionisation_path - object of the IonisationPath class
 
         Returns:
         raw amplitudes data
         """
-        column_index = final_state.pcur_column_index
+        column_index = ionisation_path.column_index
 
-        return self.raw_amp_data[:, column_index]
+        return self.__raw_amp_data[:, column_index]
 
-    def get_raw_phaseF_data(self, final_state: FinalState):
+    def get_raw_phaseF_data(self, ionisation_path: IonisationPath):
         """
-        Returns raw phase of the larger component for the given final state.
+        Returns raw phase of the larger component for the given ionisation path.
 
         Params:
-        final_state - object of the FinalState class
+        ionisation_path - object of the IonisationPath class
 
         Returns:
         raw phase of the larger component
         """
-        column_index = final_state.pcur_column_index
+        column_index = ionisation_path.column_index
 
-        return self.raw_phaseF_data[:, column_index]
+        return self.__raw_phaseF_data[:, column_index]
 
-    def get_raw_phaseG_data(self, final_state: FinalState):
+    def get_raw_phaseG_data(self, ionisation_path: IonisationPath):
         """
-        Returns raw phase of the smaller component for the given final state.
+        Returns raw phase of the smaller component for the given ionisation path.
 
         Params:
-        final_state - object of the FinalState class
+        ionisation_path - object of the IonisationPath class
 
         Returns:
         raw phase of the smaller component
         """
-        column_index = final_state.pcur_column_index
+        column_index = ionisation_path.column_index
 
-        return self.raw_phaseG_data[:, column_index]
+        return self.__raw_phaseG_data[:, column_index]
 
-    def get_raw_rate(self, final_state: FinalState):
+    def get_raw_rate(self, ionisation_path: IonisationPath):
         """
-        Returns raw probability current for the given final state.
+        Returns raw probability current for the given ionisation path.
 
         Params:
-        final_state - object of the FinalState class
+        ionisation_path - object of the IonisationPath class
 
         Returns:
         raw probability current
         """
-        column_index = final_state.pcur_column_index
-        return self.raw_data[:, column_index]
+        column_index = ionisation_path.column_index
+        return self.__raw_rate_data[:, column_index]
 
     @staticmethod
     def final_kappas(hole_kappa, only_reachable=True):
@@ -231,14 +239,13 @@ class Channels:
 
 class OnePhoton:
     """
-    Loads raw Fortran data in the one photon case. Contains methods to check
-    if the data was loaded.
+    Idenitifies possible ionization channels and loads raw Fortran data in the one photon case.
     """
 
     def __init__(self, atom_name, g_omega_IR):
         # attributes for diag data
-        self.diag_eigenvalues = None
-        self.diag_matrix_elements = None
+        self.__diag_eigenvalues = None
+        self.__diag_matrix_elements = None
         self.__diag_loaded = False  # tells whether diagonal data was loaded
 
         # attributes for holes' data
@@ -258,8 +265,8 @@ class OnePhoton:
     ):
         """
         Loads diagonal data: eigenvalues and matrix elements, and saves them
-        to the corresponding object attributes: self.diag_eigenvalues and
-        self.diag_matrix_elements.
+        to the corresponding object attributes: self.__diag_eigenvalues and
+        self.__diag_matrix_elements.
 
         Params:
         path_to_data - path to the output folder with Fortran simulation results
@@ -285,13 +292,13 @@ class OnePhoton:
                     path_to_data + "diag_matrix_elements_Jtot1.dat"
                 )
 
-            self._load_diag_eigenvalues(path_to_diag_eigenvalues)
-            self._load_diag_matrix_elements(path_to_diag_matrix_elements)
+            self.__load_diag_eigenvalues(path_to_diag_eigenvalues)
+            self.__load_diag_matrix_elements(path_to_diag_matrix_elements)
             self.__diag_loaded = True
 
-    def _load_diag_eigenvalues(self, path_to_diag_eigenvalues):
+    def __load_diag_eigenvalues(self, path_to_diag_eigenvalues):
         """
-        Loads diagonal eigenvalues and saves them to self.diag_eigenvalues.
+        Loads diagonal eigenvalues and saves them to self.__diag_eigenvalues.
 
         Params:
         path_to_diag_eigenvalues - path to the file with diagonal eigenvalues
@@ -300,11 +307,11 @@ class OnePhoton:
         eigenvals_raw = np.loadtxt(path_to_diag_eigenvalues)
         eigvals_re = eigenvals_raw[:, 0]  # real part
         eigvals_im = eigenvals_raw[:, 1]  # imaginary part
-        self.diag_eigenvalues = eigvals_re + 1j * eigvals_im
+        self.__diag_eigenvalues = eigvals_re + 1j * eigvals_im
 
-    def _load_diag_matrix_elements(self, path_to_diag_matrix_elements):
+    def __load_diag_matrix_elements(self, path_to_diag_matrix_elements):
         """
-        Loads diagonal matrix elements and saves them to self.diag_matrix_elements.
+        Loads diagonal matrix elements and saves them to self.__diag_matrix_elements.
 
         Params:
         path_to_diag_matrix_elements - path to the file with diagonal eigenvalues
@@ -318,7 +325,7 @@ class OnePhoton:
         matrix_elements_re = matrix_elements_raw[:, 0]  # real part
         matrix_elements_im = matrix_elements_raw[:, 1]  # imaginary part
 
-        self.diag_matrix_elements = matrix_elements_re + 1j * matrix_elements_im
+        self.__diag_matrix_elements = matrix_elements_re + 1j * matrix_elements_im
 
     def assert_diag_data_load(self):
         """
@@ -327,6 +334,26 @@ class OnePhoton:
         assert (
             self.__diag_loaded
         ), f"Diagonal matrix elements and eigenvalues are not loaded for {self.name}!"
+
+    def get_diag_matrix_elements(self):
+        """
+        Retruns:
+        loaded diagonal matrix elements
+        """
+
+        self.assert_diag_data_load()
+
+        return self.__diag_matrix_elements
+
+    def get_diag_eigenvalues(self):
+        """
+        Retruns:
+        loaded diagonal eigenvalues
+        """
+
+        self.assert_diag_data_load()
+
+        return self.__diag_eigenvalues
 
     def load_hole(
         self,
@@ -378,19 +405,8 @@ class OnePhoton:
             if is_loaded and should_reload:
                 print(f"Reload {hole.name} hole!")
 
-            if (
-                not binding_energy
-            ):  # if the value for binding energy hasn't been provided - load it from data
-                self.__load_hole_binding_energy(
-                    hole,
-                    path_to_data,
-                    path_to_hf_energies,
-                    path_to_omega,
-                    path_to_sp_ekin,
-                )
-
-            # If the paths to the pcur, amplitude and phase files were not specified we assume
-            # that they are in the pert folder.
+            # If the paths to the pcur, amplitude, phase and omega files were not specified
+            # we assume that they are in the pert folder.
             pert_path = (
                 path_to_data + f"pert_{hole.kappa}_{hole.n - hole.l}" + os.path.sep
             )
@@ -403,8 +419,40 @@ class OnePhoton:
                 path_to_phaseF_all = pert_path + "phaseF_all.dat"
             if path_to_phaseG_all is None:
                 path_to_phaseG_all = pert_path + "phaseG_all.dat"
+            if path_to_omega is None:
+                path_to_omega = pert_path + "omega.dat"
 
+            if (
+                not binding_energy
+            ):  # if the value for binding energy hasn't been provided - load it from data
+
+                # if paths to the HF and kinetic energies are not specified, we assume
+                # that they are in the seconphoton folder
+                if path_to_hf_energies is None:
+                    path_to_hf_energies = (
+                        path_to_data
+                        + "hf_wavefunctions"
+                        + os.path.sep
+                        + f"hf_energies_kappa_{hole.kappa}.dat"
+                    )
+
+                if path_to_sp_ekin is None:
+                    path_to_sp_ekin = (
+                        path_to_data
+                        + "second_photon"
+                        + os.path.sep
+                        + f"energy_rpa_{hole.kappa}_{hole.n - hole.l}.dat"
+                    )
+
+                hole._load_binding_energy(
+                    path_to_hf_energies,
+                    path_to_omega=path_to_omega,
+                    path_to_sp_ekin=path_to_sp_ekin,
+                )
+
+            # load data for ionization channels
             self.__channels[(n_qn, hole_kappa)] = Channels(
+                path_to_omega,
                 path_to_pcur_all,
                 path_to_amp_all,
                 path_to_phaseF_all,
@@ -412,54 +460,6 @@ class OnePhoton:
                 hole,
             )
             self.num_channels += 1
-
-    # TODO: relocate this method to the Hole class
-    @staticmethod
-    def __load_hole_binding_energy(
-        hole: Hole, path_to_data, path_to_hf_energies, path_to_omega, path_to_sp_ekin
-    ):
-        """
-        Prepares paths and loads binding energy for the given hole using Fortran output data.
-
-        Params:
-        hole - object of the Hole class to load binding energy for
-        path_to_data - path to the output folder with Fortran simulation results
-        path_to_hf_energies - path to the file with Hartree Fock energies for the given hole
-        path_to_omega - path to the omega.dat file for the given hole (usually in
-        pert folders)
-        path_to_sp_ekin - path to the file with kinetic energies for the given hole from
-        secondphoton folder
-        """
-
-        # specify paths for loading hole's binding energy
-        if path_to_hf_energies is None:
-            path_to_hf_energies = (
-                path_to_data
-                + "hf_wavefunctions"
-                + os.path.sep
-                + f"hf_energies_kappa_{hole.kappa}.dat"
-            )
-        if path_to_omega is None:
-            path_to_omega = (
-                path_to_data
-                + f"pert_{hole.kappa}_{hole.n - hole.l}"
-                + os.path.sep
-                + "omega.dat"
-            )
-        if path_to_sp_ekin is None:
-            path_to_sp_ekin = (
-                path_to_data
-                + "second_photon"
-                + os.path.sep
-                + f"energy_rpa_{hole.kappa}_{hole.n - hole.l}.dat"
-            )
-
-        # load binding energy for the hole
-        hole._load_binding_energy(
-            path_to_hf_energies,
-            path_to_omega=path_to_omega,
-            path_to_sp_ekin=path_to_sp_ekin,
-        )
 
     def is_hole_loaded(self, n_qn, hole_kappa):
         """
@@ -551,9 +551,9 @@ class OnePhoton:
         channels = self.get_channels_for_hole(n_qn, hole_kappa)
         hole = self.get_hole_object(n_qn, hole_kappa)
         hole_name = hole.name
-        final_states = channels.get_all_final_states()
-        for final_kappa in final_states.keys():
-            final_state = channels.get_final_state(final_kappa)
-            channel_labels.append(hole_name + " to " + final_state.name)
+        ionisation_paths = channels.get_all_ionisation_paths()
+        for final_kappa in ionisation_paths.keys():
+            ionisation_path = channels.get_ionisation_path(final_kappa)
+            channel_labels.append(hole_name + " to " + ionisation_path.name)
 
         return channel_labels
