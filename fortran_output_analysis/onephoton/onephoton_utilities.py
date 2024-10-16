@@ -9,7 +9,7 @@ from fortran_output_analysis.common_utility import (
     final_energies_for_matching_2sim,
     match_matrix_elements_2sim,
 )
-from fortran_output_analysis.onephoton.onephoton import OnePhoton
+from fortran_output_analysis.onephoton.onephoton import OnePhoton, final_kappas
 
 """
 This name space contains functions that may be required across different sections of one photon 
@@ -148,11 +148,10 @@ def get_matrix_elements_for_all_ionisation_paths(
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
-    channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
-    final_kappas = channels.final_kappas(hole_kappa, only_reachable=True)
+    final_kappas_list = final_kappas(hole_kappa, only_reachable=True)
 
     # the first kappa from the final_kappas list
-    first_of_final_kappas = final_kappas[0]
+    first_of_final_kappas = final_kappas_list[0]
 
     # [0] since we are only interested in the largest relativistic component
     matrix_elements = get_matrix_elements_for_ionisation_path(
@@ -160,12 +159,12 @@ def get_matrix_elements_for_all_ionisation_paths(
     )[0]
 
     M = np.zeros(
-        (len(final_kappas), len(matrix_elements)), dtype="complex128"
+        (len(final_kappas_list), len(matrix_elements)), dtype="complex128"
     )  # initialize the matrix
     M[0, :] = matrix_elements  # put the matrix elements for the first kappa
 
-    for i in range(1, len(final_kappas)):
-        final_kappa = final_kappas[i]
+    for i in range(1, len(final_kappas_list)):
+        final_kappa = final_kappas_list[i]
         M[i, :] = get_matrix_elements_for_ionisation_path(
             one_photon, n_qn, hole_kappa, final_kappa
         )[0]
@@ -190,15 +189,15 @@ def get_coulomb_phase(one_photon: OnePhoton, n_qn, hole_kappa, Z):
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
     channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
-    final_kappas = channels.final_kappas(hole_kappa, only_reachable=True)
+    final_kappas_list = final_kappas(hole_kappa, only_reachable=True)
 
     ekin = get_electron_kinetic_energy_Hartree(one_photon, n_qn, hole_kappa)
     coulomb_phase_arr = np.zeros(
-        (len(final_kappas), len(ekin))
+        (len(final_kappas_list), len(ekin))
     )  # vector to store coulomb phase
 
-    for i in range(len(final_kappas)):
-        final_kappa = final_kappas[i]
+    for i in range(len(final_kappas_list)):
+        final_kappa = final_kappas_list[i]
         coulomb_phase_arr[i, :] = coulomb_phase(final_kappa, ekin, Z)
 
     return coulomb_phase_arr

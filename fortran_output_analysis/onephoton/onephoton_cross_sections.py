@@ -11,7 +11,7 @@ from fortran_output_analysis.common_utility import (
     convert_amplitude_to_cross_section,
     Hole,
 )
-from fortran_output_analysis.onephoton.onephoton import OnePhoton, Channels
+from fortran_output_analysis.onephoton.onephoton import OnePhoton, final_kappas
 from fortran_output_analysis.onephoton.onephoton_utilities import (
     get_omega_Hartree,
     get_electron_kinetic_energy_eV,
@@ -97,7 +97,7 @@ def get_partial_integrated_cross_section_multiple_channels(
     one_photon: OnePhoton,
     n_qn,
     hole_kappa,
-    final_kappas,
+    final_kappas_list,
     mode="pcur",
     divide_omega=True,
     relativistic=True,
@@ -109,7 +109,7 @@ def get_partial_integrated_cross_section_multiple_channels(
     one_photon - object of the OnePhoton class with some loaded holes
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
-    final_kappas - array with kappa values of the final states
+    final_kappas_list - array with kappa values of the final states
     mode - "pcur" or "amp". "pcur" means calculation from the probability current, "amp" means
     calculcation from matrix amplitudes
     divide_omega - in "pcur" mode tells if we divide or multiply by the photon energy (omega) when
@@ -125,7 +125,7 @@ def get_partial_integrated_cross_section_multiple_channels(
     ), "mode parameter can only take 'pcur' or 'amp' values"
 
     assert (
-        len(final_kappas) > 0
+        len(final_kappas_list) > 0
     ), "The number of ionization channels must be greater than zero!"
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
@@ -133,7 +133,7 @@ def get_partial_integrated_cross_section_multiple_channels(
     ekin_eV = get_electron_kinetic_energy_eV(one_photon, n_qn, hole_kappa)
     cross_section = np.zeros(len(ekin_eV))
 
-    for final_kappa in final_kappas:
+    for final_kappa in final_kappas_list:
         _, channel_cs = get_partial_integrated_cross_section_1_channel(
             one_photon,
             n_qn,
@@ -180,13 +180,13 @@ def get_total_integrated_cross_section_for_hole(
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
-    final_kappas = Channels.final_kappas(hole_kappa, only_reachable=True)
+    final_kappas_list = final_kappas(hole_kappa, only_reachable=True)
 
     ekin_eV, total_cs = get_partial_integrated_cross_section_multiple_channels(
         one_photon,
         n_qn,
         hole_kappa,
-        final_kappas,
+        final_kappas_list,
         mode=mode,
         divide_omega=divide_omega,
         relativistic=relativistic,

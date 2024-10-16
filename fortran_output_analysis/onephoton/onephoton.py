@@ -31,6 +31,31 @@ class IonisationPath:
         self.column_index = col_idx
 
 
+def final_kappas(hole_kappa, only_reachable=True):
+    """
+    Returns the possible final kappas that can be reached with one photon from
+    an initial state with the given kappa. If only_reachable is False, this function
+    will always return a list of three elements, even if one of them is 0.
+
+    Params:
+    hole_kappa - kappa value of the hole
+    only_reachable - tells if only permitted states should be returned
+
+    Returns:
+    kappas - list with kappa values of possible final states
+    """
+    mag = np.abs(hole_kappa)
+    sig = np.sign(hole_kappa)
+
+    kappas = [sig * (mag - 1), -sig * mag, sig * (mag + 1)]
+
+    if only_reachable:
+        # Filter out any occurence of final kappa = 0
+        kappas = [kappa for kappa in kappas if kappa != 0]
+
+    return kappas
+
+
 class Channels:
     """
     Stores inforation about ionization channels for the given hole.
@@ -90,7 +115,7 @@ class Channels:
         #       possible_final_kappas = possible_final_kappas[sort_kappas_idx]
 
         # This code should reproduce the previous implementation
-        possible_final_kappas = self.final_kappas(kappa_hole, only_reachable=False)
+        possible_final_kappas = final_kappas(kappa_hole, only_reachable=False)
 
         # This is for getting the data from the pcur files. The first column is the photon energy.
         column_index = 0
@@ -211,31 +236,6 @@ class Channels:
         column_index = ionisation_path.column_index
         return self.__raw_rate_data[:, column_index]
 
-    @staticmethod
-    def final_kappas(hole_kappa, only_reachable=True):
-        """
-        Returns the possible final kappas that can be reached with one photon from
-        an initial state with the given kappa. If only_reachable is False, this function
-        will always return a list of three elements, even if one of them is 0.
-
-        Params:
-        hole_kappa - kappa value of the hole
-        only_reachable - tells if only permitted states should be returned
-
-        Returns:
-        kappas - list with kappa values of possible final states
-        """
-        mag = np.abs(hole_kappa)
-        sig = np.sign(hole_kappa)
-
-        kappas = [sig * (mag - 1), -sig * mag, sig * (mag + 1)]
-
-        if only_reachable:
-            # Filter out any occurence of final kappa = 0
-            kappas = [kappa for kappa in kappas if kappa != 0]
-
-        return kappas
-
 
 class OnePhoton:
     """
@@ -249,7 +249,7 @@ class OnePhoton:
         self.__diag_loaded = False  # tells whether diagonal data was loaded
 
         # attributes for holes' data
-        self.name = atom_name
+        self.atom_name = atom_name
         self.__channels = {}
         self.num_channels = 0
 
@@ -279,7 +279,7 @@ class OnePhoton:
         if not self.__diag_loaded or should_reload:
             if self.__diag_loaded and should_reload:
                 print(
-                    f"Reload diagonal matrix elements and eigenvalues in {self.name}!"
+                    f"Reload diagonal matrix elements and eigenvalues in {self.atom_name}!"
                 )
 
             # if the paths to diag data are not specified, we assume that they are
@@ -333,7 +333,7 @@ class OnePhoton:
         """
         assert (
             self.__diag_loaded
-        ), f"Diagonal matrix elements and eigenvalues are not loaded for {self.name}!"
+        ), f"Diagonal matrix elements and eigenvalues are not loaded for {self.atom_name}!"
 
     def get_diag_matrix_elements(self):
         """
@@ -360,23 +360,25 @@ class OnePhoton:
         n_qn,
         hole_kappa,
         path_to_data,
+        path_to_omega=None,
         path_to_pcur_all=None,
         path_to_amp_all=None,
         path_to_phaseF_all=None,
         path_to_phaseG_all=None,
         binding_energy=None,
         path_to_hf_energies=None,
-        path_to_omega=None,
         path_to_sp_ekin=None,
         should_reload=False,
     ):
         """
-        Initializes hole, corresponding ionization channels and loads data for them.
+        Initializes hole, corresponding ionization paths and loads data for them.
 
         Params:
         n_qn - principal quantum number of the hole
         hole_kappa - kappa value of the hole
         path_to_data - path to the output folder with Fortran simulation results
+        path_to_omega - path to the omega.dat file for the given hole (usually in
+        pert folders)
         path_to_pcur_all - path to file with probabilty current for one photon
         hole - object of the Hole class containing hole's parameters
         path_to_amp_all - path to file with amplitudes for one photon
@@ -387,8 +389,6 @@ class OnePhoton:
         binding_energy - binding energy for the hole. Allows you to specify the predifined
         value for the hole's binding energy instead of loading it from the simulation data.
         path_to_hf_energies - path to the file with Hartree Fock energies for the given hole
-        path_to_omega - path to the omega.dat file for the given hole (usually in
-        pert folders)
         path_to_sp_ekin - path to the file with kinetic energies for the given hole from
         secondphoton folder
         should_reload - tells whether we should reload if the hole was previously
@@ -399,7 +399,7 @@ class OnePhoton:
 
         if not is_loaded or should_reload:
             hole = Hole(
-                self.name, hole_kappa, n_qn, binding_energy=binding_energy
+                self.atom_name, hole_kappa, n_qn, binding_energy=binding_energy
             )  # initialize hole object
 
             if is_loaded and should_reload:
@@ -487,7 +487,7 @@ class OnePhoton:
 
         assert self.is_hole_loaded(
             n_qn, hole_kappa
-        ), f"The {construct_hole_name(self.name, n_qn, hole_kappa)} hole is not loaded!"
+        ), f"The {construct_hole_name(self.atom_name, n_qn, hole_kappa)} hole is not loaded!"
 
     def get_channels_for_hole(self, n_qn, hole_kappa):
         """
