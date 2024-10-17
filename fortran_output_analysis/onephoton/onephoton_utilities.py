@@ -74,7 +74,8 @@ def get_electron_kinetic_energy_Hartree(one_photon: OnePhoton, n_qn, hole_kappa)
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
-    hole = one_photon.get_hole_object(n_qn, hole_kappa)
+    channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
+    hole = channels.get_hole_object()
 
     if not hole.binding_energy:
         raise RuntimeError(f"The binding energy for {hole.name} is not initialized!")

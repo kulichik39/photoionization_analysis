@@ -1,396 +1,643 @@
 import numpy as np
-import re  # Regular expressions
 import os
+import re  # Regular expressions
 from itertools import islice  # Slicing when reading lines from Fortran files.
-from fortran_output_analysis.constants_and_parameters import (
-    g_eV_per_Hartree,
-    g_omega_IR,
-)
+
 from fortran_output_analysis.common_utility import (
     l_from_kappa,
     l_to_str,
-    wigner_eckart_phase,
-    wigner3j_numerical2,
     j_from_kappa,
     j_from_kappa_int,
-    IonHole,
-    phase,
-    exported_mathematica_tensor_to_python_list,
-    mag,
-    cross,
-    coulomb_phase,
+    Hole,
+    load_raw_data,
+    construct_hole_name,
 )
 from sympy.physics.wigner import wigner_3j, wigner_6j
-from input_to_fortran.parse_user_input_file import parse_user_input_file
 
 
 class IonisationPath:
+    """
+    Contains attributes of an ionisation path in the two photons case.
+    """
+
     def __init__(self, intermediate_kappa, final_kappa, file_col_idx, col_idx):
-        self.kappa_intermediate = intermediate_kappa
-        self.l_intermediate = l_from_kappa(intermediate_kappa)
-        self.j_intermediate = j_from_kappa(intermediate_kappa)
-        self.kappa_final = final_kappa
-        self.l_final = l_from_kappa(final_kappa)
-        self.j_final = j_from_kappa(final_kappa)
-        self.name_intermediate = (
+        """
+        Params:
+        intermediate_kappa - kappa value of the intermediate state
+        final_kappa - kappa value of the final state
+        file_col_idx - column index corresponding to the given ionization path in
+        the Fortran output file
+        col_idx - column index corresponding to the given ionization path in the data
+        loaded to the Channels class
+        NOTE: We don't store zero columns from the input file, so the index in the output file
+        and the index used to retrieve data loaded to the Channels class will differ.
+        """
+        self.intermediate_kappa = intermediate_kappa
+        self.intermediate_l = l_from_kappa(intermediate_kappa)
+        self.intermediate_j = j_from_kappa(intermediate_kappa)
+        self.final_kappa = final_kappa
+        self.final_l = l_from_kappa(final_kappa)
+        self.final_j = j_from_kappa(final_kappa)
+
+        intermediate_name = (
             ""
-            + l_to_str(self.l_intermediate)
+            + l_to_str(self.intermediate_l)
             + ("_{%i/2}" % (j_from_kappa_int(intermediate_kappa)))
         )
-        self.name_final = (
-            "" + l_to_str(self.l_final) + ("_{%i/2}" % (j_from_kappa_int(final_kappa)))
+        final_name = (
+            "" + l_to_str(self.final_l) + ("_{%i/2}" % (j_from_kappa_int(final_kappa)))
         )
+        self.name = intermediate_name + " to " + final_name
 
-        # We don't store zero columns from the input file,
-        # so the index in the file and the index used to retrieve data will differ.
         self.file_column_index = file_col_idx
         self.column_index = col_idx
 
-    def full_name(self):
-        return self.name_intermediate + " to " + self.name_final
+
+def assert_abs_or_emi(abs_or_emi):
+    """
+    Asserts that abs_or_emi parameter takes only "abs" or "emi" values.
+    """
+
+    assert abs_or_emi in (
+        "abs",
+        "emi",
+    ), "abs_or_emi parameter can only be 'abs' or 'emi'!"
 
 
-class MatrixElements:
-    # This class handles the fortran output data
-    # for each channel described by a two-photon (XUV+IR) interaction:
-    # hole - intermediate - final
-    # It also handles the summation over intermediate states required
-    # for a "measurable" description of the channel.
-    def __init__(self, path, hole_kappa, hole_n, abs_or_emi, verbose=False):
-        self.is_initialised = False
-        self.path = path
-        self.hole = IonHole(hole_kappa, hole_n)
-        self.ionisation_paths = {}
+def convert_abs_or_emi_to_string(abs_or_emi):
+    """
+    Converts abs_or_emi parameter into readable string.
+    """
 
-        with open(path, "r") as file:
+    assert_abs_or_emi(abs_or_emi)
 
-            # Sets up what the available ionisation paths are, and what columns in the file it is corresponding to.
-            parse_first_line_from_fortran_matrix_element_output_file(
-                file, self.hole, self.ionisation_paths
-            )
-            self.number_of_ionisation_paths = len(self.ionisation_paths)
+    if abs_or_emi == "abs":
+        return "absorption"
 
-            # We use this list to only pick the non-zero data points after parsing raw data below.
-            self.path_col_indices = []
-            for ionisation_path in self.ionisation_paths.values():
-                self.path_col_indices.append(ionisation_path.file_column_index)
+    elif abs_or_emi == "emi":
+        return "emission"
 
-            # These will be filled with parsing the rest of the file.
-            self.raw_data_real = np.zeros(1)
-            self.raw_data_imag = np.zeros(1)
-            # For any energy the matrix element is printed at each breakpoint from the Fortran program.
-            # So here we can control what breakpoints we choose.
-            self.breakpoint_step = 5
 
-            self.raw_data_real, self.raw_data_imag = (
-                parse_matrix_element_raw_data_from_fortran_output_file(
-                    file,
-                    self.number_of_ionisation_paths,
-                    self.path_col_indices,
-                    self.breakpoint_step,
-                )
-            )
+class Channels:
+    """
+    For the given hole, idenitifies possible ionization channels and loads raw Fortran data for
+    them in the two photons case.
+    """
 
-        # Errors for this are catched outside this class.
-        abs_or_emi_string = "emission"
-        if abs_or_emi == "abs":
-            abs_or_emi_string = "absorption"
+    def __init__(
+        self,
+        path_to_omega,
+        path_to_matrix_elements,
+        hole: Hole,
+        abs_or_emi,
+        breakpoint_step,
+        breakpoint_use,
+    ):
+        """
+        path_to_omega - path to the omega.dat file for the given hole (usually in
+        pert folders)
+        path_to_matrix_elements - path to the file containing matrix elements for the hole
+        hole - object of the Hole class containing hole's parameters
+        abs_or_emi - tells if we load matrix elements for absorption or emission path,
+        can take only 'abs' or 'emi' values.
+        breakpoint_step - number of breakpoints used in Fortran simulations
+        breakpoint_use - the breakpoint we want to use to fetch the data. Counted starting from
+        1: e.g. 1, 2, 3, 4 ...
+        NOTE: For any energy the matrix element is printed at each breakpoint from the Fortran
+        program. So using the two parameters above we can control what breakpoints to
+        choose.
+        """
 
-        self.name = self.hole.name + " " + abs_or_emi_string + " matrix elements."
+        self.__hole = hole
 
-        if verbose:
-            print("Added:")
-            print(self.name)
-        self.is_initialised = True
+        assert_abs_or_emi(abs_or_emi)
+        abs_or_emi_string = convert_abs_or_emi_to_string(abs_or_emi)
+        self.name = hole.name + " " + abs_or_emi_string + " channels."
 
-    def get_ionisation_path(self, intermediate_kappa, final_kappa):
-        if self.is_initialised:
-            key_tuple = (self.hole.kappa, intermediate_kappa, final_kappa)
-            ionisation_path = self.ionisation_paths[key_tuple]
-            column_index = ionisation_path.column_index
-            z = (
-                self.raw_data_real[:, column_index]
-                + 1j * self.raw_data_imag[:, column_index]
-            )
-            name = self.hole.name + "$ to $" + ionisation_path.full_name()
-            return z, name
-        else:
-            raise ValueError("MatrixElements not initialised!")
+        # raw data on XUV photon energies
+        self.__raw_omega_data = load_raw_data(path_to_omega)
 
-    def get_ionisation_path_summed_over_intermediate(self, final_kappa, mj):
+        # initialize attributes for ionization paths and matrix elements
+        self.__ionisation_paths = {}
+        self.__raw_matrix_elements = None
 
-        paths_summed_over_intermediate_states = (
-            sum_over_intermediate_states_including_3j_symbols(
-                self.hole.kappa,
-                final_kappa,
-                self.raw_data_real,
-                self.raw_data_imag,
-                self.ionisation_paths,
-                mj,
-            )
+        # load ionization paths and corresponding matrix elements
+        self.__load_data(path_to_matrix_elements, breakpoint_step, breakpoint_use)
+
+    def __load_data(self, path_to_matrix_elements, breakpoint_step, breakpoint_use):
+        """
+        Loads possible ionization paths and raw matrix elements based on the data
+        from the Fortran output file.
+
+        Params:
+        path_to_matrix_elements - path to the file containing matrix elements for the hole
+        breakpoint_step - number of breakpoints used in Fortran simulations
+        breakpoint_use - the breakpoint we want to use to fetch the data. Counted starting from
+        1: e.g. 1, 2, 3, 4 ...
+        NOTE: For any energy the matrix element is printed at each breakpoint from the Fortran
+        program. So using the two parameters above we can control what breakpoints to
+        choose.
+        """
+
+        self.__load_ionisation_paths(path_to_matrix_elements)
+        self.__load_matrix_elements(
+            path_to_matrix_elements, breakpoint_step, breakpoint_use
         )
 
-        for state_tuple in paths_summed_over_intermediate_states.keys():
+    def __load_ionisation_paths(self, path_to_matrix_elements):
+        """
+        Identifies and loads all possible ionization paths based
+        on the data from the matrix elements file.
 
-            if final_kappa == state_tuple[1]:
-                final_label = l_to_str(l_from_kappa(final_kappa)) + (
-                    "_{%i/2}" % (j_from_kappa_int(final_kappa))
-                )
-                name = self.hole.name + "$  to  $" + final_label
-                return paths_summed_over_intermediate_states[state_tuple], name
+        Params:
+        path_to_matrix_elements - path to the file containing matrix elements for the hole
+        """
 
-        # If channel doesn't exist we return None and handle error outside this function.
-        return None
+        with open(path_to_matrix_elements, "r") as file:
+            # The first line contains information about what is in each column of the output file.
+            # They are the kappas for the hole - intermediate - final channels, according to:
+            # <hole> <offset_don't_care> <intermediate1> <intermediate2> <intermediate3> <final1> <final2> ... <final9>
+            first_line = file.readline().rstrip()
 
-    def get_summed_channels(self, mj):
-        # This function just gets the hole- and final-kappas present, ie implies the sum over all intermediate.
-        # It returns a list of the unique tuples (hole_kappa, final_kappa).
-        # It can be used as input to getting all the data for these channels summed over intermediate states.
-        hole_kappa = self.hole.kappa
-        channels = []
-        for path_tuple in self.ionisation_paths.keys():
-            final_kappa = path_tuple[2]
+        # split using regex - The kappas are separated by spaces.
+        split_first_line = re.split("\s+", first_line)
+        # For some reason we get an extra first element that is an empty string.
+        # We discard this
+        split_first_line = split_first_line[1:]
 
-            j_hole = j_from_kappa_int(hole_kappa)
-            j_final = j_from_kappa_int(final_kappa)
-            mjj = int(2 * mj)
-            if np.abs(mjj) > j_hole or np.abs(mjj) > j_final:
-                continue
+        # Catch input error here:
+        hole_kappa = int(split_first_line[0])
+        assert (
+            hole_kappa == self.__hole.kappa
+        ), "Mismatch between hole kappa read from file, and the input to Channels constructor"
 
-            if (hole_kappa, final_kappa) not in channels:
-                channels.append((hole_kappa, final_kappa))
+        intermediate_kappas_str = split_first_line[2:5]
+        final_kappas_str = split_first_line[5:]
 
-        return channels
+        final_col_index = 0
+        raw_data_col_index = 0
+        intermediate_stride = 3  # There are three possible final states (including zero for non-channel) for each intermediate.
+        intermediate_index = 0
+
+        for intermediate_kappa_str in intermediate_kappas_str:
+
+            intermediate_kappa = int(intermediate_kappa_str)
+
+            i = intermediate_index
+            for j in range(3):  # 3 finals per kappa.
+                final_index = j + i * intermediate_stride
+                final_kappa = int(final_kappas_str[final_index])
+                if intermediate_kappa != 0 and final_kappa != 0:
+                    self.__ionisation_paths[(intermediate_kappa, final_kappa)] = (
+                        IonisationPath(
+                            intermediate_kappa,
+                            final_kappa,
+                            final_col_index,
+                            raw_data_col_index,
+                        )
+                    )
+                    raw_data_col_index += 1
+
+                final_col_index += 1  # note how this is inceremented even though we have a zero column.
+
+            intermediate_index += 1
+
+    def __load_matrix_elements(
+        self, path_to_matrix_elements, breakpoint_step, breakpoint_use
+    ):
+        """
+        Loads raw matrix elements from the Fortran output file.
+
+        Params:
+        path_to_matrix_elements - path to the file containing matrix elements for the hole
+        breakpoint_step - number of breakpoints used in Fortran simulations
+        breakpoint_use - the breakpoint we want to use to fetch the data. Counted starting from
+        1: e.g. 1, 2, 3, 4 ...
+        NOTE: For any energy the matrix element is printed at each breakpoint from the Fortran
+        program. So using the two parameters above we can control what breakpoints to
+        choose.
+        """
+
+        nonzero_col_indices = []
+        for ionisation_path in self.__ionisation_paths.values():
+            nonzero_col_indices.append(ionisation_path.file_column_index)
+
+        N = 9  # we know we have 9 columns with real/imag pairs
+
+        # arrays to store one row of the matrix
+        real_line_np = np.zeros(
+            N, dtype=np.double
+        )  # for real part of the matrix element
+        imag_line_np = np.zeros(
+            N, dtype=np.double
+        )  # for imaginary part of the matrix element
+
+        # lists to store all rows of the matrix
+        real_dynamic = []
+        imag_dynamic = []
+
+        breakpoint_index = breakpoint_use - 1
+
+        with open(path_to_matrix_elements, "r") as file:
+            file.readline()  # skip the first line
+
+            # Read the rest of lines with actual matrix elements
+            for line in islice(file, breakpoint_index, None, breakpoint_step):
+                line = line.replace(" ", "")  # remove whitespace
+                line = line.split(")(")  # split by parentheses
+                line[0] = line[0].replace(
+                    "(", ""
+                )  # remove stray parenthesis from first element.
+                line[-1] = line[-1].replace(")\n", "")  # remove crap from last element
+
+                for i in range(len(line)):
+                    real_imag_pair = line[i]
+                    real, imag = real_imag_pair.split(",")
+                    real_line_np[i] = np.double(real)
+                    imag_line_np[i] = np.double(imag)
+
+                real_dynamic.append(np.copy(real_line_np))
+                imag_dynamic.append(np.copy(imag_line_np))
+
+        # transform final list to arrays for convenience
+        raw_matrix_real = np.array(real_dynamic)
+        raw_matrix_imag = np.array(imag_dynamic)
+
+        # keep only non-zero columns
+        raw_matrix_real = raw_matrix_real[:, nonzero_col_indices]
+        raw_matrix_imag = raw_matrix_imag[:, nonzero_col_indices]
+
+        self.__raw_matrix_elements = raw_matrix_real + 1j * raw_matrix_imag
+
+    def get_raw_omega_data(self):
+        """
+        Returns:
+        raw photon energies in Hartree
+        """
+        return self.__raw_omega_data
+
+    def get_all_ionisation_paths(self):
+        """
+        Returns:
+        all loaded ionisation paths
+        """
+
+        return self.__ionisation_paths
+
+    def assert_ionisation_path(self, intermediate_kappa, final_kappa):
+        """
+        Assertion of the ionisation path. Checks if the given ionisation path
+        is within possible ionization paths.
+
+        Params:
+        intermediate_kappa - kappa value of the intermediate state
+        final_kappa - kappa value of the final state
+        """
+
+        assert self.check_ionisation_path(
+            intermediate_kappa, final_kappa
+        ), f"The state with intermediate kappa {intermediate_kappa} and final kappa {final_kappa} is not within ionisation paths for {self.__hole.name} hole!"
+
+    def check_ionisation_path(self, intermediate_kappa, final_kappa):
+        """
+        Checks if the given ionisation path (determined by intermediate_kappa and final_kappa)
+        is within self.__ionisation_paths.
+
+        Params:
+        intermediate_kappa - kappa value of the intermediate state
+        final_kappa - kappa value of the final state
+
+        Returns:
+        True if the given path is within self.__ionisation_paths, False otherwise
+        """
+
+        return (intermediate_kappa, final_kappa) in self.__ionisation_paths
+
+    def get_ionisation_path(self, intermediate_kappa, final_kappa):
+        """
+        Returns ionization path corresponding to the given intermediate and final states.
+
+        Params:
+        intermediate_kappa - kappa value of the intermediate state
+        final_kappa - kappa value of the final state
+
+        Returns:
+        object of IonisationPath class
+        """
+
+        self.assert_ionisation_path(intermediate_kappa, final_kappa)
+        key_tuple = (intermediate_kappa, final_kappa)
+
+        return self.__ionisation_paths[key_tuple]
+
+    def get_raw_matrix_elements_for_ionization_path(
+        self, ionisation_path: IonisationPath
+    ):
+        """
+        Returns raw matrix elements corresponding to the given ionization path
+
+        Params:
+        ionisation_path - object of the IonisationPath class
+
+        Returns:
+        raw_matrix_elements - raw matrix elements for the ionization path
+        """
+
+        column_index = ionisation_path.column_index
+        raw_matrix_elements = self.__raw_matrix_elements[:, column_index]
+
+        return raw_matrix_elements
+
+    def get_hole_object(self):
+        """
+        Returns:
+        the Hole object corresponding to these channels.
+        """
+
+        return self.__hole
 
 
 class TwoPhotons:
+    """
+    Grabs and stores data from Fortran simulations in the two photons case.
+    """
+
     def __init__(self, atom_name, g_omega_IR):
         self.atom_name = atom_name
-        self.matrix_elements_abs = {}
-        self.matrix_elements_emi = {}
-        self.eV_per_Hartree = g_eV_per_Hartree
-        self.omega_path = ""
-        self.omega_Hartree = 0
-        self.omega_eV = 0
 
-        # energy of the IR photon used in Fortran simulations (in Hartree)
+        # dicts to store ionisation channels for emission and absorption paths
+        self.__channels_abs = {}
+        self.__channels_emi = {}
+
+        # IR photon energy used in Fortran simulations (in Hartree)
         self.g_omega_IR = g_omega_IR
 
-    def add_omega(self, path):
-        self.omega_path = path
-        self.omega_Hartree = np.loadtxt(path)
-        self.omega_eV = self.omega_Hartree * self.eV_per_Hartree
-
-    # Add matrix elements after absorption or emission of an IR photon
-    # for a particular hole (from XUV absorption),
-    # using the output data from the Fortran program.
-    def add_matrix_elements(self, path, abs_or_emi, hole_kappa, hole_n):
-
-        if abs_or_emi == "abs":
-            self.matrix_elements_abs[hole_kappa] = MatrixElements(
-                path, hole_kappa, hole_n, abs_or_emi
-            )
-
-        elif abs_or_emi == "emi":
-            self.matrix_elements_emi[hole_kappa] = MatrixElements(
-                path, hole_kappa, hole_n, abs_or_emi
-            )
-
-        else:
-            raise ValueError(
-                "Need to specify emission ('emi') or absorption ('abs') when adding matrix elements data!"
-            )
-
-        return
-
-    # This is a method to get the data that is summed over intermediate states and over m values.
-    def get_matrix_elements_for_hole_to_final(
-        self, hole_kappa, final_kappa, abs_or_emi, mj
+    def load_hole(
+        self,
+        abs_emi_or_both,
+        n_qn,
+        hole_kappa,
+        path_to_data,
+        path_to_matrix_elements_emi=None,
+        path_to_matrix_elements_abs=None,
+        path_to_omega=None,
+        binding_energy=None,
+        path_to_hf_energies=None,
+        path_to_sp_ekin=None,
+        should_reload=False,
+        breakpoint_step=5,
+        breakpoint_use=3,
     ):
+        """
+        Initializes hole for absorption or emission path, initializes
+        corresponding ionization paths and loads data for them.
 
-        retval = np.zeros(1)
+        Params:
+        abs_emi_or_both - tells if we load matrix elements for absorption, emission or both paths,
+        can take only 'abs', 'emi' or 'both' values.
+        n_qn - principal quantum number of the hole
+        hole_kappa - kappa value of the hole
+        path_to_data - path to the output folder with Fortran simulation results
+        path_to_matrix_elements_emi - path to the file containing matrix elements for emission
+        path. NOTE: must be specified if abs_emi_or_both is 'emi' or 'both'!!
+        path_to_matrix_elements_abs - path to the file containing matrix elements for absorption
+        path. NOTE: must be specified if abs_emi_or_both is 'abs' or 'both'!!
+        path_to_omega - path to the omega.dat file for the given hole (usually in
+        pert folders)
+        binding_energy - binding energy for the hole. Allows you to specify the predifined
+        value for the hole's binding energy instead of loading it from the simulation data.
+        path_to_hf_energies - path to the file with Hartree Fock energies for the given hole
+        path_to_sp_ekin - path to the file with kinetic energies for the given hole from
+        secondphoton folder
+        should_reload - tells whether we should reload if the hole was previously
+        loaded
+        """
+
+        self.assert_paths_for_loading(
+            abs_emi_or_both, path_to_matrix_elements_emi, path_to_matrix_elements_abs
+        )
+
+        if abs_emi_or_both == "both":
+            is_loaded = self.is_hole_loaded(
+                "abs", n_qn, hole_kappa
+            ) and self.is_hole_loaded("emi", n_qn, hole_kappa)
+
+        else:
+            is_loaded = self.is_hole_loaded(abs_emi_or_both, n_qn, hole_kappa)
+
+        if not is_loaded or should_reload:
+            hole = Hole(
+                self.atom_name, hole_kappa, n_qn, binding_energy=binding_energy
+            )  # initialize hole object
+
+            if is_loaded and should_reload:
+                message_string = (
+                    "both"
+                    if abs_emi_or_both == "both"
+                    else convert_abs_or_emi_to_string(abs_emi_or_both)
+                )
+                print(f"Reload {hole.name} hole for {message_string } path!")
+
+            # If the path to the omega file was not specified we assume that it is in the
+            # pert folder.
+            if path_to_omega is None:
+                path_to_omega = (
+                    path_to_data
+                    + f"pert_{hole.kappa}_{hole.n - hole.l}"
+                    + os.path.sep
+                    + "omega.dat"
+                )
+
+            if (
+                not binding_energy
+            ):  # if the value for binding energy hasn't been provided - load it from data
+
+                # if paths to the HF and kinetic energies are not specified, we assume
+                # that they are in the seconphoton folder
+                if path_to_hf_energies is None:
+                    path_to_hf_energies = (
+                        path_to_data
+                        + "hf_wavefunctions"
+                        + os.path.sep
+                        + f"hf_energies_kappa_{hole.kappa}.dat"
+                    )
+
+                if path_to_sp_ekin is None:
+                    path_to_sp_ekin = (
+                        path_to_data
+                        + "second_photon"
+                        + os.path.sep
+                        + f"energy_rpa_{hole.kappa}_{hole.n - hole.l}.dat"
+                    )
+
+                hole._load_binding_energy(
+                    path_to_hf_energies,
+                    path_to_omega=path_to_omega,
+                    path_to_sp_ekin=path_to_sp_ekin,
+                )
+
+            # load data for ionization channels
+            if abs_emi_or_both == "abs" or abs_emi_or_both == "both":
+                self.__channels_abs[(n_qn, hole_kappa)] = Channels(
+                    path_to_omega,
+                    path_to_matrix_elements_abs,
+                    hole,
+                    "abs",
+                    breakpoint_step,
+                    breakpoint_use,
+                )
+            if abs_emi_or_both == "emi" or abs_emi_or_both == "both":
+                self.__channels_emi[(n_qn, hole_kappa)] = Channels(
+                    path_to_omega,
+                    path_to_matrix_elements_emi,
+                    hole,
+                    "emi",
+                    breakpoint_step,
+                    breakpoint_use,
+                )
+
+    @staticmethod
+    def assert_paths_for_loading(
+        abs_emi_or_both, path_to_matrix_elements_emi, path_to_matrix_elements_abs
+    ):
+        """
+        Asserts if the paths to matrix elements were correctly specified.
+        If abs_emi_or_both is "abs" checks if path_to_matrix_elements_abs is not None.
+        If abs_emi_or_both is "emi" checks if path_to_matrix_elements_emi is not None.
+        If abs_emi_or_both is "both" checks if boths paths are not None.
+
+        Params:
+        abs_emi_or_both - tells if we load matrix elements for absorption, emission or both paths,
+        can take only 'abs', 'emi' or 'both' values.
+        path_to_matrix_elements_emi - path to the file containing matrix elements for emission
+        path
+        path_to_matrix_elements_abs - path to the file containing matrix elements for absorption
+        path
+        """
+        assert abs_emi_or_both in (
+            "abs",
+            "emi",
+            "both",
+        ), "abs_emi_or_both parameter can only be 'abs', 'emi' or 'both'!"
+
+        if abs_emi_or_both == "emi" or abs_emi_or_both == "both":
+            assert (
+                path_to_matrix_elements_emi
+            ), "Please, specify the path to emission matrix elements!"
+
+        if abs_emi_or_both == "abs" or abs_emi_or_both == "both":
+            assert (
+                path_to_matrix_elements_abs
+            ), "Please, specify the path to absorption matrix elements!"
+
+    def is_hole_loaded(self, abs_or_emi, n_qn, hole_kappa):
+        """
+        Checks if the hole is loaded for the given abs_or_emi path.
+
+        Params:
+        abs_or_emi - tells if we want to check for absorption or emission path,
+        can take only 'abs' or 'emi' values.
+        n_qn - principal quantum number of the hole
+        hole_kappa - kappa value of the hole
+
+        Returns:
+        True if loaded, False otherwise.
+        """
+
+        assert_abs_or_emi(abs_or_emi)
+
         if abs_or_emi == "abs":
-            retval, name = self.matrix_elements_abs[
-                hole_kappa
-            ].get_ionisation_path_summed_over_intermediate(final_kappa, mj)
+            return (n_qn, hole_kappa) in self.__channels_abs
 
         elif abs_or_emi == "emi":
-            retval, name = self.matrix_elements_emi[
-                hole_kappa
-            ].get_ionisation_path_summed_over_intermediate(final_kappa, mj)
-        else:
-            raise ValueError(
-                "Need to specify emission ('emi') or absorption ('abs') when getting matrix element data!"
-            )
+            return (n_qn, hole_kappa) in self.__channels_emi
 
-        if len(retval) < 2:
-            raise ValueError(
-                "Couldn't get matrix elements for hole_kappa %i and final_kappa %i, \n"
-                "get_ionisation_path_summed_over_intermediate_and_mj returned None."
-                % (hole_kappa, final_kappa)
-            )
-        else:
-            return retval, name
+    def assert_hole_load(self, abs_or_emi, n_qn, hole_kappa):
+        """
+        Assertion that the hole was loaded for the given path (abs_or_emi).
 
-    def get_hole_to_final_channels(self, hole_kappa, abs_or_emi, mj):
-        channels = []
+        Params:
+        abs_or_emi - tells if we want to check for absorption or emission path,
+        can take only 'abs' or 'emi' values.
+        hole - object of the Hole class containing hole's parameters
+        n_qn - principal quantum number of the hole
+        hole_kappa - kappa value of the hole
+        """
+        assert_abs_or_emi(abs_or_emi)
+
+        assert self.is_hole_loaded(
+            abs_or_emi, n_qn, hole_kappa
+        ), f"The {construct_hole_name(self.atom_name, n_qn, hole_kappa)} hole is not loaded for {convert_abs_or_emi_to_string(abs_or_emi)} path!"
+
+    def get_channels_for_hole(self, abs_or_emi, n_qn, hole_kappa):
+        """
+        Returns abosrption/emission ionization channels for the given hole.
+
+        Params:
+        abs_or_emi - tells if we want to get for absorption or emission path,
+        can take only 'abs' or 'emi' values.
+        n_qn - principal quantum number of the hole
+        hole_kappa - kappa value of the hole
+
+        Returns:
+        channels - channels for the given hole and path
+        """
+        assert_abs_or_emi(abs_or_emi)
+
+        self.assert_hole_load(abs_or_emi, n_qn, hole_kappa)
+
         if abs_or_emi == "abs":
-            channels = self.matrix_elements_abs[hole_kappa].get_summed_channels(mj)
+            channels = self.__channels_abs[(n_qn, hole_kappa)]
 
         elif abs_or_emi == "emi":
-            channels = self.matrix_elements_emi[hole_kappa].get_summed_channels(mj)
-        else:
-            raise ValueError(
-                "Need to specify emission ('emi') or absorption ('abs') when getting matrix element data!"
-            )
+            channels = self.__channels_emi[(n_qn, hole_kappa)]
 
         return channels
 
-    def get_matrix_element_for_intermediate_resolved_channel(
-        self, hole_kappa, intermediate_kappa, final_kappa, abs_or_emi
-    ):
-        retval = np.zeros(1)
-        if abs_or_emi == "abs":
-            retval, name = self.matrix_elements_abs[hole_kappa].get_ionisation_path(
-                intermediate_kappa, final_kappa
-            )
-
-        elif abs_or_emi == "emi":
-            retval, name = self.matrix_elements_emi[hole_kappa].get_ionisation_path(
-                intermediate_kappa, final_kappa
-            )
-        else:
-            raise ValueError(
-                "Need to specify emission ('emi') or absorption ('abs') when getting matrix element data!"
-            )
-
-        if len(retval) < 2:
-            raise ValueError(
-                "Couldn't get matrix elements for hole_kappa %i and final_kappa %i, \n"
-                "get_ionisation_path_summed_over_intermediate_and_mj returned None."
-                % (hole_kappa, final_kappa)
-            )
-        else:
-            return retval, name
-
-    def get_coupled_matrix_element(
-        self, hole_kappa, abs_or_emi, final_kappa, verbose=False
-    ):
-        """Computes the value of the specified coupled matrix element.
-        This function also adds in the non-matrix element phases from the fortran program
+    def get_all_channels(self, abs_or_emi):
         """
-        if abs_or_emi == "abs":
-            fortranM = self.matrix_elements_abs[hole_kappa]
-        elif abs_or_emi == "emi":
-            fortranM = self.matrix_elements_emi[hole_kappa]
-        else:
-            raise ValueError(
-                "Need to specify emission ('emi') or absorption ('abs') when getting matrix element data!"
-            )
+        Returns abosrption/emission ionization channels for all loaded holes.
 
-        # Get the length of the array of data points by looking up the index of the first open channel and checking
-        # the row length at that column.
-        random_col = fortranM.ionisation_paths[
-            next(iter(fortranM.ionisation_paths.keys()))
-        ].column_index
-        energy_size = len(fortranM.raw_data_real[:, random_col])
+        Params:
+        abs_or_emi - tells if we want to get for absorption or emission path,
+        can take only 'abs' or 'emi' values.
 
-        # Initialize the output array       3 different values for K: 0, 1 and 2
-        coupled_matrix_element = np.zeros((3, energy_size), dtype="complex128")
-
-        # Get the data from the correct phase file
-        phase_data = self._raw_short_range_phase(abs_or_emi, hole_kappa)
-
-        # Loop through all the ionisation paths
-        for kappa_tuple in fortranM.ionisation_paths.keys():
-            loop_hole_kappa, intermediate_kappa, loop_final_kappa = kappa_tuple
-
-            # Only use those that match the requested initial and final state
-            if loop_hole_kappa == hole_kappa and loop_final_kappa == final_kappa:
-                # Get j values
-                hole_j = j_from_kappa(hole_kappa)
-                intermediate_j = j_from_kappa(intermediate_kappa)
-                final_j = j_from_kappa(final_kappa)
-
-                # Get the column index of the raw fortran output file that contains the requested ionisation path
-                col_index = fortranM.ionisation_paths[kappa_tuple].column_index
-
-                # Compute the value of the matrix element
-                matrix_element = (
-                    fortranM.raw_data_real[:, col_index]
-                    + 1j * fortranM.raw_data_imag[:, col_index]
-                )
-
-                # Add in the short range phase from the fortran program
-                matrix_element *= np.exp(1j * phase_data[:, col_index])
-
-                for K in [0, 2]:
-                    if verbose:
-                        print(
-                            f"{K=}, {hole_j=}, {intermediate_j=}, {final_j=} gives ",
-                            (2 * K + 1)
-                            * float(wigner_3j(1, 1, K, 0, 0, 0))
-                            * float(
-                                wigner_6j(1, 1, K, hole_j, final_j, intermediate_j)
-                            ),
-                        )
-                        # print(f"{K=}, {hole_j=}, {intermediate_j=}, {final_j=} gives ", phase(hole_j + final_j + K)*(2*K+1)*float(wigner_3j(1,1,K,0,0,0))*float(wigner_6j(1,1,K,hole_j,final_j,intermediate_j)))
-                        print(
-                            f"The last point of this matrix element is {matrix_element[-1]}\n"
-                        )
-
-                    # Multiply by the prefactor and store it in the output matrix
-                    coupled_matrix_element[K] += (
-                        (2 * K + 1)
-                        * float(wigner_3j(1, 1, K, 0, 0, 0))
-                        * matrix_element
-                        * float(wigner_6j(1, 1, K, hole_j, final_j, intermediate_j))
-                    )
-                    # coupled_matrix_element[K] += phase(hole_j + final_j + K)*(2*K+1)*float(wigner_3j(1,1,K,0,0,0))*matrix_element*float(wigner_6j(1,1,K,hole_j,final_j,intermediate_j))
-
-        if verbose:
-            print(
-                f"in the end the 100th point of the coupled matrix element for {final_kappa=} ends up as",
-                coupled_matrix_element[:, 100],
-            )
-
-        return [
-            coupled_matrix_element[0],
-            coupled_matrix_element[1],
-            coupled_matrix_element[2],
-        ]
-
-    def _raw_short_range_phase(self, abs_or_emi, hole_kappa):
-        """Returns the short range phase for the given channel.
-        The channels are organized in the same way for the return value from this function
-        As the raw_data_real and raw_data_imag items of a MatrixElement object"""
+        Returns:
+        loaded absosrption/emission channels for all holes
+        """
+        assert_abs_or_emi(abs_or_emi)
 
         if abs_or_emi == "abs":
-            M = self.matrix_elements_abs[hole_kappa]
+            return self.__channels_abs
+
         elif abs_or_emi == "emi":
-            M = self.matrix_elements_emi[hole_kappa]
-        else:
-            raise ValueError(f"abs_or_emi can only be 'abs' or 'emi' not {abs_or_emi}")
+            return self.__channels_emi
 
-        # Determine the name of the data file
-        phase_file_name = (
-            "phase_"
-            + abs_or_emi
-            + f"_{hole_kappa}_{M.hole.n - l_from_kappa(hole_kappa)}.dat"
-        )
+    def get_channel_labels_for_hole(self, abs_or_emi, n_qn, hole_kappa):
+        """
+        Constructs labels for all ionization channels of the given hole and the
+        given path (abs_or_emi).
 
-        # Remove the string after the last "/" in the phase that points to the matrix element file
-        # and replace it with the name of the phase data file
-        phase_path = (
-            os.path.sep.join(M.path.split(os.path.sep)[:-1])
-            + os.path.sep
-            + phase_file_name
-        )
+        Params:
+        abs_or_emi - tells if we want to get for absorption or emission path,
+        can take only 'abs' or 'emi' values.
+        n_qn - principal quantum number of the hole
+        hole_kappa - kappa value of the hole
 
-        raw_phase_data = np.loadtxt(phase_path)
+        Returns:
+        channel_labels - list with labels of all ionization channels
+        """
 
-        # Filter out all columns that are all zeros to make column index match with organization of matrix element data
-        zero_col_indexes = np.argwhere(np.all(raw_phase_data[..., :] == 0, axis=0))
-        raw_phase_data = np.delete(raw_phase_data, zero_col_indexes, axis=1)
+        assert_abs_or_emi(abs_or_emi)
+        self.assert_hole_load(abs_or_emi, n_qn, hole_kappa)
 
-        return raw_phase_data
+        channel_labels = []
+        channels = self.get_channels_for_hole(abs_or_emi, n_qn, hole_kappa)
+        hole = channels.get_hole_object()
+        hole_name = hole.name
+        ionisation_paths = channels.get_all_ionisation_paths()
+        for key_tuple in ionisation_paths.keys():
+            ionisation_path = ionisation_paths[key_tuple]
+            channel_labels.append(hole_name + " to " + ionisation_path.name)
+
+        return channel_labels

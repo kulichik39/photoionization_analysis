@@ -14,7 +14,7 @@ from fortran_output_analysis.common_utility import (
 
 class IonisationPath:
     """
-    Stores inforation about an ionisation path in the one photon case.
+    Stores information about an ionisation path in the one photon case.
     """
 
     def __init__(self, kappa, col_idx):
@@ -58,8 +58,8 @@ def final_kappas(hole_kappa, only_reachable=True):
 
 class Channels:
     """
-    Stores inforation about ionization channels for the given hole.
-    Contains methods to get raw loaded data for those channels.
+    For the given hole, idenitifies possible ionization channels and loads raw Fortran data for
+    them in the one photon case.
     """
 
     def __init__(
@@ -84,7 +84,7 @@ class Channels:
         hole - object of the Hole class containing hole's parameters
         """
 
-        self.hole = hole
+        self.__hole = hole
         self.__ionisation_paths = {}
         self.__add_ionisation_path()
         self.__raw_omega_data = load_raw_data(path_to_omega)
@@ -102,7 +102,7 @@ class Channels:
         Adds possbile hole's ionization paths. Excludes forbidden channels with
         kappa = 0.
         """
-        kappa_hole = self.hole.kappa
+        kappa_hole = self.__hole.kappa
         # One can convince oneself that the following is true for a given hole_kappa.
         #       possible_final_kappas = np.array([-kappa_hole, kappa_hole+1, -(-kappa_hole+1)])
         # It is possible that one of the final kappas are zero, so we need to handle this.
@@ -144,26 +144,27 @@ class Channels:
         ionisation_path - object of the IonisationPath class
         """
 
-        self.assert_final_kappa(final_kappa)
+        self.assert_ionisation_path(final_kappa)
 
         return self.__ionisation_paths[final_kappa]
 
-    def assert_final_kappa(self, final_kappa):
+    def assert_ionisation_path(self, final_kappa):
         """
-        Assertion of the final state. Checks if the given final kappa
+        Assertion of the ionisation path. Checks if the given final kappa
         is within possible ionization paths.
 
         Params:
         final_kappa - kappa value of the final state
         """
 
-        assert self.check_final_kappa(
+        assert self.check_ionisation_path(
             final_kappa
-        ), f"The final state with kappa {final_kappa} is not within channels for {self.hole.name} hole!"
+        ), f"The state with final kappa {final_kappa} is not within ionisation paths for {self.__hole.name} hole!"
 
-    def check_final_kappa(self, final_kappa):
+    def check_ionisation_path(self, final_kappa):
         """
-        Checks if the given final state is within ionization paths.
+        Checks if the given ionisation path (determined by final_kappa)
+        is within self.__ionisation_paths.
 
         Params:
         final_kappa - kappa value of the final state
@@ -236,10 +237,18 @@ class Channels:
         column_index = ionisation_path.column_index
         return self.__raw_rate_data[:, column_index]
 
+    def get_hole_object(self):
+        """
+        Returns:
+        the Hole object corresponding to these channels.
+        """
+
+        return self.__hole
+
 
 class OnePhoton:
     """
-    Idenitifies possible ionization channels and loads raw Fortran data in the one photon case.
+    Grabs and stores data from Fortran simulations in the one photon case.
     """
 
     def __init__(self, atom_name, g_omega_IR):
@@ -509,29 +518,10 @@ class OnePhoton:
 
     def get_all_channels(self):
         """
-        Returns self.__channels
+        Returns loaded channels for all holes (self.__channels)
         """
 
         return self.__channels
-
-    def get_hole_object(self, n_qn, hole_kappa):
-        """
-        Returns the Hole object corresponding to the particular channels in self.__channels.
-
-        Params:
-        n_qn - principal quantum number of the hole
-        hole_kappa - kappa value of the hole
-
-        Returns:
-        hole - Hole object for the given channels
-        """
-
-        self.assert_hole_load(n_qn, hole_kappa)
-
-        channels = self.get_channels_for_hole(n_qn, hole_kappa)
-        hole = channels.hole
-
-        return hole
 
     def get_channel_labels_for_hole(self, n_qn, hole_kappa):
         """
@@ -549,7 +539,7 @@ class OnePhoton:
 
         channel_labels = []
         channels = self.get_channels_for_hole(n_qn, hole_kappa)
-        hole = self.get_hole_object(n_qn, hole_kappa)
+        hole = channels.get_hole_object()
         hole_name = hole.name
         ionisation_paths = channels.get_all_ionisation_paths()
         for final_kappa in ionisation_paths.keys():

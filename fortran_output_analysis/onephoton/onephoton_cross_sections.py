@@ -266,14 +266,14 @@ def get_integrated_photoelectron_emission_cross_section(
         mode_cs == "amp"
     ), "mode_cs parameter can only take 'pcur' or 'amp' values"
 
-    all_channels = one_photon.get_all_channels()
-    loaded_holes = list(all_channels.keys())
+    all_channels = list(one_photon.get_all_channels().values())
+    N_holes = len(all_channels)  # total number of loaded holes (channels)
 
     assert (
-        len(loaded_holes) > 0
+        N_holes > 0
     ), f"No holes are loaded in {one_photon.name}. Please, load at least one hole!"
 
-    first_hole = one_photon.get_hole_object(loaded_holes[0][0], loaded_holes[0][1])
+    first_hole = all_channels[0].get_hole_object()
 
     if mode_energies == "ekin":
         energy_first = get_electron_kinetic_energy_eV(
@@ -285,7 +285,6 @@ def get_integrated_photoelectron_emission_cross_section(
         )  # energy vector of the first hole
 
     N_energy = len(energy_first)  # length of the energy vetor
-    N_holes = len(loaded_holes)  # total number of holes
 
     if (
         mode_energies == "ekin"
@@ -301,7 +300,7 @@ def get_integrated_photoelectron_emission_cross_section(
         emission_cs = np.zeros(N_energy)
 
     for i in range(N_holes):
-        hole = one_photon.get_hole_object(loaded_holes[i][0], loaded_holes[i][1])
+        hole = all_channels[i].get_hole_object()
         ekin, hole_cs = get_total_integrated_cross_section_for_hole(
             one_photon,
             hole.n,

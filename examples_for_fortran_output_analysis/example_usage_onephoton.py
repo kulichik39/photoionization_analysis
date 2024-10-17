@@ -64,9 +64,9 @@ one_photon.load_diag_data(data_dir, should_reload=True)
 To load a hole we call a method named "load_hole" inside the one_photon object. 
 The Fortran program outputs the probability current for ionisation from a hole to the set of 
 possible final states in the continuum (channels). So, when we load a hole we also add all these 
-"channels". Furthermore, "load_hole" method tries to find binding energy for the hole based on
-Hartree Fock energies or electron kinetic energies from the secondphoton folder.
-"load_hole" method also contains "should_reload" parameter that tells wheter we 
+"channels". Furthermore, "load_hole" method tries to find binding energy for the hole (if not 
+specified) based on Hartree Fock energies or electron kinetic energies from the secondphoton 
+folder. "load_hole" method also contains "should_reload" parameter that tells wheter we 
 should reinitalize a hole if that hole was previously loaded (False by default).
 
 The data for loaded holes are stored in the self.__channels dictionary attribute of the 
@@ -82,12 +82,12 @@ one_photon.load_hole(hole_n_6p3half, hole_kappa_6p3half, data_dir)
 labels_from_6p3half = one_photon.get_channel_labels_for_hole(
     hole_n_6p3half, hole_kappa_6p3half
 )
-print(f"\n\nPossible channels for Radon 6p_3/2: {labels_from_6p3half}\n\n")
+print(f"\nPossible channels for Radon 6p_3/2: {labels_from_6p3half}\n")
 
 # We can print binding energy for 6p_3/2
-print(
-    f"\n\nBinding energy for Radon 6p_3/2 is {one_photon.get_hole_object(hole_n_6p3half, hole_kappa_6p3half).binding_energy}\n\n"
-)
+channels_6p3half = one_photon.get_channels_for_hole(hole_n_6p3half, hole_kappa_6p3half)
+hole_6p3half = channels_6p3half.get_hole_object()
+print(f"\nBinding energy for Radon 6p_3/2 is {hole_6p3half.binding_energy}\n")
 
 
 # load 6p_1/2 hole to one_photon object
@@ -99,12 +99,12 @@ one_photon.load_hole(hole_n_6p1half, hole_kappa_6p1half, data_dir)
 labels_from_6p1half = one_photon.get_channel_labels_for_hole(
     hole_n_6p1half, hole_kappa_6p1half
 )
-print(f"\n\nPossible channels for Radon 6p_1/2: {labels_from_6p1half}\n\n")
+print(f"\nPossible channels for Radon 6p_1/2: {labels_from_6p1half}\n")
 
 # We can print binding energy for 6p_1/2
-print(
-    f"\n\nBinding energy for Radon 6p_1/2 is {one_photon.get_hole_object(hole_n_6p1half, hole_kappa_6p1half).binding_energy}\n\n"
-)
+channels_6p1half = one_photon.get_channels_for_hole(hole_n_6p1half, hole_kappa_6p1half)
+hole_6p1half = channels_6p1half.get_hole_object()
+print(f"\nBinding energy for Radon 6p_1/2 is {hole_6p1half.binding_energy}\n")
 
 # try to reload 6p_1/2 hole with the same data (outputs information message)
 one_photon.load_hole(
