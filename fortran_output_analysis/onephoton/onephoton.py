@@ -115,12 +115,18 @@ class Channels:
         #       possible_final_kappas = possible_final_kappas[sort_kappas_idx]
 
         # This code should reproduce the previous implementation
-        possible_final_kappas = final_kappas(kappa_hole, only_reachable=False)
+        possible_final_kappas = final_kappas(
+            kappa_hole, only_reachable=False
+        )  # list of ALL final states
+
+        reachable_final_kappas = final_kappas(
+            kappa_hole, only_reachable=True
+        )  # list of reachable final states
 
         # This is for getting the data from the pcur files. The first column is the photon energy.
         column_index = 0
         for kappa in possible_final_kappas:
-            if kappa != 0:
+            if kappa in reachable_final_kappas:
                 self.__ionisation_paths[kappa] = IonisationPath(kappa, column_index)
 
             column_index += 1
@@ -181,6 +187,8 @@ class Channels:
         raw photon energies in Hartree
         """
         return self.__raw_omega_data
+
+    # TODO: replace ionisation_path parameter to final_kappa to restore encapsulation
 
     def get_raw_amp_data(self, ionisation_path: IonisationPath):
         """

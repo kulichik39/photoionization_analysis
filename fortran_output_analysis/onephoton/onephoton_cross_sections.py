@@ -180,7 +180,9 @@ def get_total_integrated_cross_section_for_hole(
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
-    final_kappas_list = final_kappas(hole_kappa, only_reachable=True)
+    final_kappas_list = final_kappas(
+        hole_kappa, only_reachable=True
+    )  # get reachable final states
 
     ekin_eV, total_cs = get_partial_integrated_cross_section_multiple_channels(
         one_photon,

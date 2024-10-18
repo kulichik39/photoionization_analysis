@@ -109,7 +109,7 @@ def get_matrix_elements_for_ionisation_path(
 ):
     """
     Computes matrix elements after one photon as amp*[e^(i*phase_of_F),
-    e^(i*phase_of_G)] for the given hole and ionisation path.
+    e^(i*phase_of_G)] for the given hole and ionisation path (final state).
 
     Params:
     one_photon - object of the OnePhoton class with some loaded holes
@@ -136,7 +136,10 @@ def get_matrix_elements_for_all_ionisation_paths(
     one_photon: OnePhoton, n_qn, hole_kappa
 ):
     """
-    Computes matrix elements for all possible ionisation paths of the given hole.
+    Computes matrix elements for all ionisation paths of the given hole. If a particular
+    ionisation path is forbidden (final_kappa=0), the matrix elements for this path will be 0.
+    This behavior is required to get vectors of a certain shape, which is necessary for
+    functions like one_photon_asymmetry_parameter() from onephoton_asymmetry_parameters.py.
 
     Params:
     one_photon - object of the OnePhoton class with some loaded holes
@@ -149,26 +152,28 @@ def get_matrix_elements_for_all_ionisation_paths(
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
-    final_kappas_list = final_kappas(hole_kappa, only_reachable=True)
+    final_kappas_list = final_kappas(
+        hole_kappa, only_reachable=False
+    )  # list of ALL final states
 
-    # the first kappa from the final_kappas list
-    first_of_final_kappas = final_kappas_list[0]
-
-    # [0] since we are only interested in the largest relativistic component
-    matrix_elements = get_matrix_elements_for_ionisation_path(
-        one_photon, n_qn, hole_kappa, first_of_final_kappas
-    )[0]
+    energy_size = len(get_omega_Hartree(one_photon, n_qn, hole_kappa))
 
     M = np.zeros(
-        (len(final_kappas_list), len(matrix_elements)), dtype="complex128"
+        (len(final_kappas_list), energy_size), dtype="complex128"
     )  # initialize the matrix
-    M[0, :] = matrix_elements  # put the matrix elements for the first kappa
 
-    for i in range(1, len(final_kappas_list)):
+    final_kappas_reachable = final_kappas(
+        hole_kappa, only_reachable=True
+    )  # list of reachable final states
+
+    for i in range(len(final_kappas_list)):
         final_kappa = final_kappas_list[i]
-        M[i, :] = get_matrix_elements_for_ionisation_path(
-            one_photon, n_qn, hole_kappa, final_kappa
-        )[0]
+        if (
+            final_kappa in final_kappas_reachable
+        ):  # filter reachable states and keep unreachable ones zero
+            M[i, :] = get_matrix_elements_for_ionisation_path(
+                one_photon, n_qn, hole_kappa, final_kappa
+            )[0]
 
     return M
 
@@ -176,6 +181,10 @@ def get_matrix_elements_for_all_ionisation_paths(
 def get_coulomb_phase(one_photon: OnePhoton, n_qn, hole_kappa, Z):
     """
     Computes Coulomb phase for all the ionisation paths of the given hole.
+    If a particular ionisation path is forbidden (final_kappa=0), the coulomb phase for this
+    path will be 0. This behavior is required to get vectors of a certain shape, which is
+    necessary for functions like one_photon_asymmetry_parameter() from
+    onephoton_asymmetry_parameters.py.
 
     Params:
     one_photon - object of the OnePhoton class with some loaded holes
@@ -189,8 +198,13 @@ def get_coulomb_phase(one_photon: OnePhoton, n_qn, hole_kappa, Z):
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
-    channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
-    final_kappas_list = final_kappas(hole_kappa, only_reachable=True)
+    final_kappas_list = final_kappas(
+        hole_kappa, only_reachable=False
+    )  # list of ALL final states
+
+    final_kappas_reachable = final_kappas(
+        hole_kappa, only_reachable=True
+    )  # list of reachable final states
 
     ekin = get_electron_kinetic_energy_Hartree(one_photon, n_qn, hole_kappa)
     coulomb_phase_arr = np.zeros(
@@ -199,7 +213,10 @@ def get_coulomb_phase(one_photon: OnePhoton, n_qn, hole_kappa, Z):
 
     for i in range(len(final_kappas_list)):
         final_kappa = final_kappas_list[i]
-        coulomb_phase_arr[i, :] = coulomb_phase(final_kappa, ekin, Z)
+        if (
+            final_kappa in final_kappas_reachable
+        ):  # filter reachable states and keep unreachable ones zero
+            coulomb_phase_arr[i, :] = coulomb_phase(final_kappa, ekin, Z)
 
     return coulomb_phase_arr
 

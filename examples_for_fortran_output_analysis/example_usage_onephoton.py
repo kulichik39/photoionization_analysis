@@ -44,7 +44,7 @@ atom_name = "Radon"
 one_photon = OnePhoton(atom_name, g_omega_IR)
 
 # specify path to Fortran output data (I use backslash for the path since I work on Windows)
-data_dir = "fortran_data\\2_-4_64_radon\\"
+path_to_data = "fortran_data\\2_-4_64_radon\\"
 
 """
 To load diagonal matrix elements and diagonal eigenvalues (required for e.g. photoabsorption 
@@ -54,10 +54,10 @@ previously loaded (False by default).
 """
 
 # load diagonal data
-one_photon.load_diag_data(data_dir)
+one_photon.load_diag_data(path_to_data)
 
 # try to reload diagonal data (outputs information message)
-one_photon.load_diag_data(data_dir, should_reload=True)
+one_photon.load_diag_data(path_to_data, should_reload=True)
 
 
 """
@@ -84,7 +84,7 @@ garbage value if you don't really need it.
 # load 6p_3/2 to one_photon object
 hole_kappa_6p3half = -2
 hole_n_6p3half = 6
-one_photon.load_hole(hole_n_6p3half, hole_kappa_6p3half, data_dir)
+one_photon.load_hole(hole_n_6p3half, hole_kappa_6p3half, path_to_data)
 
 # We can get the labels for all possible inonization channels from 6p_3/2 hole:
 labels_from_6p3half = one_photon.get_channel_labels_for_hole(
@@ -101,7 +101,7 @@ print(f"\nBinding energy for Radon 6p_3/2 is {hole_6p3half.binding_energy}\n")
 # load 6p_1/2 hole to one_photon object
 hole_kappa_6p1half = 1
 hole_n_6p1half = 6
-one_photon.load_hole(hole_n_6p1half, hole_kappa_6p1half, data_dir)
+one_photon.load_hole(hole_n_6p1half, hole_kappa_6p1half, path_to_data)
 
 # We can get the labels for all possible inonization channels from 6p_1/2 hole:
 labels_from_6p1half = one_photon.get_channel_labels_for_hole(
@@ -118,7 +118,7 @@ print(f"\nBinding energy for Radon 6p_1/2 is {hole_6p1half.binding_energy}\n")
 one_photon.load_hole(
     hole_n_6p1half,
     hole_kappa_6p1half,
-    data_dir,
+    path_to_data,
     should_reload=True,
 )
 
