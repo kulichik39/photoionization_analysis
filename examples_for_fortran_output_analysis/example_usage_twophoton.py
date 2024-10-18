@@ -44,7 +44,7 @@ atom_name = "Radon"
 two_photons = TwoPhotons(atom_name, g_omega_IR)
 
 # specify path to Fortran output data (I use backslash for the path since I work on Windows)
-data_dir = "fortran_data\\2_-4_64_radon\\"
+path_to_data = "fortran_data\\2_-4_64_radon\\"
 
 
 """
@@ -59,7 +59,7 @@ should reinitalize a hole if that hole was previously loaded (False by default).
 The data for loaded holes are stored in the self.__channels dictionary attribute of the 
 two_photons object and can be accessed via the "get_channel_for_hole" method.
 
-NOTE: When we load data in the two photons case, we should provide two things: 
+NOTE: When we load data in the two photons case, we should provide three things: 
 1. "path_to_data" - path to fortran output folder. This is needed to grab XUV photon energies data
 and Hartree Fock energies or electron kinetic energies to load hole's binding energy 
 (if not specified).
@@ -69,6 +69,8 @@ for absorption only (abs_emi_or_both="abs"). emission only (abs_emi_or_both="emi
 (abs_emi_or_both="both"). If we want to load for absorption/emission only then we need to specify
 only one corresponding path, if we want to load for both we must specify both paths, otherwise,
 we'll get an assertion error.
+3. "path_to_phase_emi" or "path_to_phase_abs" or both - similar to the point 2 above but these
+are files containing phases.
 
 Finally, I should say that many paths parameters in the "load_hole" method are kept as optional 
 parameters (e.g. path_to_omega, path_to_hf_energies, path_to_sp_ekin). If some of them are not 
@@ -84,19 +86,24 @@ hole_kappa_6p3half = -2
 hole_n_6p3half = 6
 
 path_to_matrix_emi = (
-    data_dir + "second_photon" + os.path.sep + "m_elements_eF1_-2_5.dat"
+    path_to_data + "second_photon" + os.path.sep + "m_elements_eF1_-2_5.dat"
 )
 path_to_matrix_abs = (
-    data_dir + "second_photon" + os.path.sep + "m_elements_eF2_-2_5.dat"
+    path_to_data + "second_photon" + os.path.sep + "m_elements_eF2_-2_5.dat"
 )
+
+path_to_phases_emi = path_to_data + "second_photon" + os.path.sep + "phase_eF1_-2_5.dat"
+path_to_phases_abs = path_to_data + "second_photon" + os.path.sep + "phase_eF2_-2_5.dat"
 
 two_photons.load_hole(
     "both",
     hole_n_6p3half,
     hole_kappa_6p3half,
-    data_dir,
+    path_to_data,
     path_to_matrix_elements_emi=path_to_matrix_emi,  # must specify both paths to matrix elements
     path_to_matrix_elements_abs=path_to_matrix_abs,
+    path_to_phases_emi=path_to_phases_emi,
+    path_to_phases_abs=path_to_phases_abs,
 )  # load for both path simultaneously
 
 # try to realod hole with the same data, just for demonstration purposes
@@ -105,16 +112,18 @@ two_photons.load_hole(
     "emi",
     hole_n_6p3half,
     hole_kappa_6p3half,
-    data_dir,
-    path_to_matrix_elements_emi=path_to_matrix_emi,  # need to sepcify only one path to matrix elements
+    path_to_data,
+    path_to_matrix_elements_emi=path_to_matrix_emi,
+    path_to_phases_emi=path_to_phases_emi,  # need to sepcify only one path to matrix elements
     should_reload=True,
 )  # load for emission path
 two_photons.load_hole(
     "abs",
     hole_n_6p3half,
     hole_kappa_6p3half,
-    data_dir,
-    path_to_matrix_elements_abs=path_to_matrix_abs,  # need to sepcify only one path to matrix elements
+    path_to_data,
+    path_to_matrix_elements_abs=path_to_matrix_abs,
+    path_to_phases_abs=path_to_phases_abs,  # need to sepcify only one path to matrix elements
     should_reload=True,
 )  # load for absorption path
 
@@ -135,3 +144,12 @@ print(f"\n Binding energy for Radon 6p_3/2 is {hole_6p3half.binding_energy}\n")
 
 
 # NOTE: by analogy, you can add more holes (e.g. 6p_{1/2}) to the two_photons object
+
+# channels = two_photons.get_channels_for_hole("abs", hole_n_6p3half, hole_kappa_6p3half)
+# ion_path = channels.get_ionisation_path(-1, -2)
+# mat = channels.get_raw_matrix_elements_for_ionization_path(ion_path)
+# print(mat.shape)
+# print(mat)
+# phase = channels.get_raw_phase_for_ionization_path(ion_path)
+# print(phase.shape)
+# print(phase)

@@ -12,7 +12,6 @@ from fortran_output_analysis.common_utility import (
     load_raw_data,
     construct_hole_name,
 )
-from sympy.physics.wigner import wigner_3j, wigner_6j
 
 
 class IonisationPath:
@@ -86,21 +85,26 @@ class Channels:
 
     def __init__(
         self,
-        path_to_omega,
-        path_to_matrix_elements,
-        hole: Hole,
         abs_or_emi,
+        hole: Hole,
+        path_to_omega,
+        path_to_phases,
+        path_to_matrix_elements,
         breakpoint_step,
         breakpoint_use,
     ):
         """
-        path_to_omega - path to the omega.dat file for the given hole (usually in
-        pert folders)
-        path_to_matrix_elements - path to the file containing matrix elements for the hole
-        hole - object of the Hole class containing hole's parameters
         abs_or_emi - tells if we load matrix elements for absorption or emission path,
         can take only 'abs' or 'emi' values.
-        breakpoint_step - number of breakpoints used in Fortran simulations
+                hole - object of the Hole class containing hole's parameters
+        path_to_omega - path to the omega.dat file for the given hole (usually in
+        pert folders)
+        path_to_phases - path to the file containing phases for the corresponding hole and
+        abs_or_emi
+        path_to_matrix_elements - path to the file containing matrix elements for the
+        corresponding hole and abs_or_emi
+        breakpoint_step - number of breakpoints used in Fortran simulations for matrix elements
+        calculation
         breakpoint_use - the breakpoint we want to use to fetch the data. Counted starting from
         1: e.g. 1, 2, 3, 4 ...
         NOTE: For any energy the matrix element is printed at each breakpoint from the Fortran
@@ -117,32 +121,42 @@ class Channels:
         # raw data on XUV photon energies
         self.__raw_omega_data = load_raw_data(path_to_omega)
 
-        # initialize attributes for ionization paths and matrix elements
+        # initialize attributes for ionization paths, matrix elements and phases
         self.__ionisation_paths = {}
         self.__raw_matrix_elements = None
+        self.__raw_phase_data = None
 
         # load ionization paths and corresponding matrix elements
-        self.__load_data(path_to_matrix_elements, breakpoint_step, breakpoint_use)
+        self.__load_data(
+            path_to_matrix_elements, breakpoint_step, breakpoint_use, path_to_phases
+        )
 
-    def __load_data(self, path_to_matrix_elements, breakpoint_step, breakpoint_use):
+    def __load_data(
+        self, path_to_matrix_elements, breakpoint_step, breakpoint_use, path_to_phases
+    ):
         """
-        Loads possible ionization paths and raw matrix elements based on the data
-        from the Fortran output file.
+        Loads possible ionization paths, raw matrix elements and phases based on the data
+        from the Fortran output files.
 
         Params:
-        path_to_matrix_elements - path to the file containing matrix elements for the hole
-        breakpoint_step - number of breakpoints used in Fortran simulations
+        path_to_matrix_elements - path to the file containing matrix elements for the
+        corresponding hole and abs_or_emi
+        breakpoint_step - number of breakpoints used in Fortran simulations for matrix elements
+        calculation
         breakpoint_use - the breakpoint we want to use to fetch the data. Counted starting from
         1: e.g. 1, 2, 3, 4 ...
         NOTE: For any energy the matrix element is printed at each breakpoint from the Fortran
         program. So using the two parameters above we can control what breakpoints to
-        choose.
+        choose
+        path_to_phases - path to the file containing phases for the corresponding hole and
+        abs_or_emi
         """
 
         self.__load_ionisation_paths(path_to_matrix_elements)
         self.__load_matrix_elements(
             path_to_matrix_elements, breakpoint_step, breakpoint_use
         )
+        self.__load_phases(path_to_phases)
 
     def __load_ionisation_paths(self, path_to_matrix_elements):
         """
@@ -150,7 +164,8 @@ class Channels:
         on the data from the matrix elements file.
 
         Params:
-        path_to_matrix_elements - path to the file containing matrix elements for the hole
+        path_to_matrix_elements - path to the file containing matrix elements for the
+        corresponding hole and abs_or_emi
         """
 
         with open(path_to_matrix_elements, "r") as file:
@@ -209,8 +224,10 @@ class Channels:
         Loads raw matrix elements from the Fortran output file.
 
         Params:
-        path_to_matrix_elements - path to the file containing matrix elements for the hole
-        breakpoint_step - number of breakpoints used in Fortran simulations
+        path_to_matrix_elements - path to the file containing matrix elements for the
+        corresponding hole and abs_or_emi
+        breakpoint_step - number of breakpoints used in Fortran simulations for matrix elements
+        calculation
         breakpoint_use - the breakpoint we want to use to fetch the data. Counted starting from
         1: e.g. 1, 2, 3, 4 ...
         NOTE: For any energy the matrix element is printed at each breakpoint from the Fortran
@@ -268,6 +285,24 @@ class Channels:
         raw_matrix_imag = raw_matrix_imag[:, nonzero_col_indices]
 
         self.__raw_matrix_elements = raw_matrix_real + 1j * raw_matrix_imag
+
+    def __load_phases(self, path_to_phases):
+        """
+        Loads raw phases from the Fortran output file.
+
+        Params:
+        path_to_phases - path to the file containing phases for the corresponding hole and
+        abs_or_emi
+        """
+
+        nonzero_col_indices = []
+        for ionisation_path in self.__ionisation_paths.values():
+            nonzero_col_indices.append(ionisation_path.file_column_index)
+
+        raw_phases = np.loadtxt(path_to_phases)
+        raw_phases = raw_phases[:, nonzero_col_indices]
+
+        self.__raw_phase_data = raw_phases
 
     def get_raw_omega_data(self):
         """
@@ -330,6 +365,7 @@ class Channels:
 
         return self.__ionisation_paths[key_tuple]
 
+    # TODO: replace ionisation_path parameter to final_kappa to restore encapsulation
     def get_raw_matrix_elements_for_ionization_path(
         self, ionisation_path: IonisationPath
     ):
@@ -347,6 +383,22 @@ class Channels:
         raw_matrix_elements = self.__raw_matrix_elements[:, column_index]
 
         return raw_matrix_elements
+
+    def get_raw_phase_for_ionization_path(self, ionisation_path: IonisationPath):
+        """
+        Returns raw phase data corresponding to the given ionization path
+
+        Params:
+        ionisation_path - object of the IonisationPath class
+
+        Returns:
+        raw_phase- raw phase values for the ionization path
+        """
+
+        column_index = ionisation_path.column_index
+        raw_phase = self.__raw_phase_data[:, column_index]
+
+        return raw_phase
 
     def get_hole_object(self):
         """
@@ -380,13 +432,15 @@ class TwoPhotons:
         path_to_data,
         path_to_matrix_elements_emi=None,
         path_to_matrix_elements_abs=None,
+        breakpoint_step=5,
+        breakpoint_use=3,
+        path_to_phases_emi=None,
+        path_to_phases_abs=None,
         path_to_omega=None,
         binding_energy=None,
         path_to_hf_energies=None,
         path_to_sp_ekin=None,
         should_reload=False,
-        breakpoint_step=5,
-        breakpoint_use=3,
     ):
         """
         Initializes hole for absorption or emission or both paths, initializes
@@ -402,6 +456,14 @@ class TwoPhotons:
         path. NOTE: must be specified if abs_emi_or_both is 'emi' or 'both'!!
         path_to_matrix_elements_abs - path to the file containing matrix elements for absorption
         path. NOTE: must be specified if abs_emi_or_both is 'abs' or 'both'!!
+        breakpoint_step - number of breakpoints used in Fortran simulations for matrix elements
+        calculation
+        breakpoint_use - the breakpoint we want to use to fetch the data. Counted starting from
+        1: e.g. 1, 2, 3, 4 ...
+        path_to_phases_emi - path to the file containing phases for emission path.
+        NOTE: must be specified if abs_emi_or_both is 'emi' or 'both'!!
+        path_to_phases_abs - path to the file containing phases for absorption path.
+        NOTE: must be specified if abs_emi_or_both is 'abs' or 'both'!!
         path_to_omega - path to the omega.dat file with XUV photon energies for the given hole
         (usually in pert folders). If not specified, constructed for path_to_data
         binding_energy - binding energy for the hole. Allows you to specify the predifined
@@ -415,7 +477,11 @@ class TwoPhotons:
         """
 
         self.assert_paths_for_loading(
-            abs_emi_or_both, path_to_matrix_elements_emi, path_to_matrix_elements_abs
+            abs_emi_or_both,
+            path_to_matrix_elements_emi,
+            path_to_phases_emi,
+            path_to_matrix_elements_abs,
+            path_to_phases_abs,
         )
 
         if abs_emi_or_both == "both":
@@ -480,40 +546,50 @@ class TwoPhotons:
             # load data for ionization channels
             if abs_emi_or_both == "abs" or abs_emi_or_both == "both":
                 self.__channels_abs[(n_qn, hole_kappa)] = Channels(
-                    path_to_omega,
-                    path_to_matrix_elements_abs,
-                    hole,
                     "abs",
+                    hole,
+                    path_to_omega,
+                    path_to_phases_abs,
+                    path_to_matrix_elements_abs,
                     breakpoint_step,
                     breakpoint_use,
                 )
             if abs_emi_or_both == "emi" or abs_emi_or_both == "both":
                 self.__channels_emi[(n_qn, hole_kappa)] = Channels(
-                    path_to_omega,
-                    path_to_matrix_elements_emi,
-                    hole,
                     "emi",
+                    hole,
+                    path_to_omega,
+                    path_to_phases_emi,
+                    path_to_matrix_elements_emi,
                     breakpoint_step,
                     breakpoint_use,
                 )
 
     @staticmethod
     def assert_paths_for_loading(
-        abs_emi_or_both, path_to_matrix_elements_emi, path_to_matrix_elements_abs
+        abs_emi_or_both,
+        path_to_matrix_elements_emi,
+        path_to_phases_emi,
+        path_to_matrix_elements_abs,
+        path_to_phases_abs,
     ):
         """
-        Asserts if the paths to matrix elements were correctly specified.
-        If abs_emi_or_both is "abs" checks if path_to_matrix_elements_abs is not None.
-        If abs_emi_or_both is "emi" checks if path_to_matrix_elements_emi is not None.
-        If abs_emi_or_both is "both" checks if boths paths are not None.
+        Asserts if the paths to matrix elements and phases were correctly specified.
+        If abs_emi_or_both is "abs" checks if path_to_matrix_elements_abs and path_to_phases_abs
+        are not None.
+        If abs_emi_or_both is "emi" checks if path_to_matrix_elements_emi and path_to_phases_emi
+        are not None.
+        If abs_emi_or_both is "both" checks if all the provided paths are not None.
 
         Params:
         abs_emi_or_both - tells if we load matrix elements for absorption, emission or both paths,
         can take only 'abs', 'emi' or 'both' values.
         path_to_matrix_elements_emi - path to the file containing matrix elements for emission
         path
+        path_to_phases_emi - path to the file containing phases for emission path
         path_to_matrix_elements_abs - path to the file containing matrix elements for absorption
         path
+        path_to_phases_abs - path to the file containing phases for absorption path
         """
         assert abs_emi_or_both in (
             "abs",
@@ -523,13 +599,13 @@ class TwoPhotons:
 
         if abs_emi_or_both == "emi" or abs_emi_or_both == "both":
             assert (
-                path_to_matrix_elements_emi
-            ), "Please, specify the path to emission matrix elements!"
+                path_to_matrix_elements_emi and path_to_phases_emi
+            ), "Please, specify paths to emission matrix elements and phases!"
 
         if abs_emi_or_both == "abs" or abs_emi_or_both == "both":
             assert (
-                path_to_matrix_elements_abs
-            ), "Please, specify the path to absorption matrix elements!"
+                path_to_matrix_elements_abs and path_to_phases_abs
+            ), "Please, specify paths to absorption matrix elements and phases!"
 
     def is_hole_loaded(self, abs_or_emi, n_qn, hole_kappa):
         """
@@ -642,3 +718,39 @@ class TwoPhotons:
             channel_labels.append(hole_name + " to " + ionisation_path.name)
 
         return channel_labels
+
+
+def final_kappas(hole_kappa, only_reachable=True):
+    """
+    Returns a list of the kappa quantum numbers that are reachable with
+    two photons from the state with the given hole kappa.
+    If only_reachable is set to true the function will only return kappa
+    values that can be reached from the hole kappa, otherwise it will
+    always return the five 'theoretically possible' channels.
+
+    Params:
+    hole_kappa - kappa value of the hole
+    only_reachable - tells if only permitted states should be returned
+
+    Returns:
+    kappas - list with kappa values of possible final states
+    """
+
+    sig = np.sign(hole_kappa)
+    mag = np.abs(hole_kappa)
+
+    if mag == 1 and only_reachable:
+        kappas = [sig * mag, -sig * (mag + 1), sig * (mag + 2)]
+    elif mag == 2 and only_reachable:
+        kappas = [-sig * (mag - 1), sig * mag, -sig * (mag + 1), sig * (mag + 2)]
+    else:
+        # These are the 'theoretically possible' channels.
+        kappas = [
+            sig * (mag - 2),
+            -sig * (mag - 1),
+            sig * mag,
+            -sig * (mag + 1),
+            sig * (mag + 2),
+        ]
+
+    return kappas
