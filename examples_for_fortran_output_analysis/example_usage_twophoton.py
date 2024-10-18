@@ -1,110 +1,137 @@
+import sys
+import os
 import numpy as np
 from matplotlib import pyplot as plt
-import sys
-# We need to import modules from the relcode_py repository.
-# We can add the relcode_py repo to our python path, or we can add it manually in any particular script.
-# In this example we do the latter. The path to where the relcode_py repo is located will likely be
-# different from what is used in this example!
-# If you are using some integrated development environment there is probably a better workflow
-# for you for addding the relcode_py repo to your environment.
 
-relcode_py_repo_path = "/home/jsorngard/Mirrors/atomlx04/Repo/relcode_py"
+"""
+This code will help you understand how to use TwoPhotons class and different twophotons_...  
+namespaces to proccess Fortran output data for the two photons case.
 
-sys.path.append(relcode_py_repo_path)
+At first, we need to import modules from this repository. We have two possible ways
+to do this:
+1. Add __init__.py file to this folder as well as all the folders from which we import code 
+and then run this script using "python" command with "-m" flag (run module as a script). 
+The full command is: "python -m examples_for_fortran_output_analysis.example_usage_twophoton".
+2. Add this repository to our system path through sys.path.append("path/to/this/repo")
+and run this script as usual.
 
-from fortran_output_analysis.twophotons import TwoPhotons
-from fortran_output_analysis.common_utility import kappa_from_l_and_j
+In this example, we'll use the second approach.
+"""
 
-#
-# Defining paths to the Fortran output data:
-#
+# append this repository to our system path
+repo_path = "D:\\photoionization_analysis"
+sys.path.append(repo_path)
 
-data_dir = "/home/jsorngard/Mirrors/atomlx04/Repo/relcode_examples/argon_example/full/"
-twophoton_data_dir = data_dir+"second_photon/"
+# now we can easily import our TwoPhotons class
+from fortran_output_analysis.twophotons.twophotons import TwoPhotons
 
-path_abs = twophoton_data_dir + "m_elements_eF2_-2_2.dat"
-path_emi = twophoton_data_dir + "m_elements_eF1_-2_2.dat"
-
-# Create instance of the TwoPhotons class.
-# The Fortran data can then be added (i.e loaded from file) to this instance.
-# The argument to the constructor is just a string that will be stored in two_photons.name.
-# It can be used as a plot title or such.
-two_photons = TwoPhotons("Ar sidebands 16/18")
+# we also import some physical constants required for the analysis
+from fortran_output_analysis.constants_and_parameters import g_eV_per_Hartree
 
 
-# We read in the XUV photon energies here by specifying the path.
-two_photons.add_omega(data_dir + "pert_-2_2/omega.dat")
-omega = two_photons.omega_eV  # We can also access it like two_photons.omega_Hartree if we want it in a.u.
+# ============== Initialization with TwoPhotons ==============
+"""
+The main purpose of the TwoPhotons class is to initialize the atom, the holes we want to 
+consider ionization from and load the raw Fortran output data for them. 
 
-# Then we can add matrix elements to the TwoPhotons instance.
-# We need to give it the path to the output file, and if it's absorption or emission as "abs" or "emi".
-# Then we also give it the hole kappa (ie -2 for p3/2 here).
-# Last argument is the principal quantum number n, for the hole, mainly used for labels in plots.
-two_photons.add_matrix_elements(path_abs, "abs", -2, 3)  # absorption
-two_photons.add_matrix_elements(path_emi, "emi", -2, 3)  # emission
+In this guide we'll consider ionization from the Radon's 6p_3/2. 
+"""
+# create an instance
+g_omega_IR = (
+    1.55 / g_eV_per_Hartree
+)  # energy of IR photon used in simulations (in Hartree)
+atom_name = "Radon"
+two_photons = TwoPhotons(atom_name, g_omega_IR)
 
-# There is also a helper function to translate from l,j to kappa:
-print("l=1, j=3/2 -> kappa: ", kappa_from_l_and_j(l=1, j=3/2))  # Should be -2 for l=1, j=3/2
+# specify path to Fortran output data (I use backslash for the path since I work on Windows)
+data_dir = "fortran_data\\2_-4_64_radon\\"
 
-# To add the output from a different hole, in this case 3p1/2 we change the paths and kappa accordingly.
-# Note that we overwrite the path variables used previously, this is just a matter of convenience.
-path_abs = twophoton_data_dir + "m_elements_eF2_1_2.dat"
-path_emi = twophoton_data_dir + "m_elements_eF1_1_2.dat"
 
-# We can use the helper functions if we don't know the maps (l,j) <-> kappa by heart
-kappa_3p1half = kappa_from_l_and_j(l=1, j=1/2)
-print("l=1, j=1/2 -> kappa: ", kappa_3p1half)  # Should be 1 for l=1, j=1/2
-n = 3
-two_photons.add_matrix_elements(path_abs, "abs", kappa_3p1half, n)  # absorption
-two_photons.add_matrix_elements(path_emi, "emi", kappa_3p1half, n)  # emission
+"""
+To load a hole we call a method named "load_hole" inside the two_photons object. 
+The Fortran program outputs complex matrix elements for ionisation from a hole through 
+the set of possible ionisation paths (channels). So, when we load a hole we also add all these 
+"channels". Furthermore, "load_hole" method tries to find binding energy for the hole (if not 
+specified) based on Hartree Fock energies or electron kinetic energies from the secondphoton 
+folder. "load_hole" method also contains "should_reload" parameter that tells wheter we 
+should reinitalize a hole if that hole was previously loaded (False by default).
 
-# When we have added matrix elements to the instance, we can retrieve the data.
-# Either we get the raw data from a specifc column in the Fortran output file, by specifying the
-# relevant kappas for (hole, intermediate, final).
-# Example (-2, -1, 1) - 3p3/2 -> s1/2 -> p1/2
-hole_kappa = -2
-intermediate_kappa = -1
-final_kappa = 1
-# We get back a complex valued numpy array with the data for (in this case) absorption two-photon matrix element.
-# Here we name this return value z, it can be whatever. We also get back a string stored in channel_name.
-z, channel_name = two_photons.get_matrix_element_for_intermediate_resolved_channel(hole_kappa,
-                                                                                   intermediate_kappa,
-                                                                                   final_kappa,
-                                                                                   "abs")
-# The string can be used for plotting labels ie, it looks like follows:
-print("string corresponding to matrix element for (hole, intermediate, final):", channel_name, "\n")
+The data for loaded holes are stored in the self.__channels dictionary attribute of the 
+two_photons object and can be accessed via the "get_channel_for_hole" method.
 
-# Note that when we get matrix elements for a particular channel (hole, intermediate, final), we
-# don't take any consideration to mj for describing the states.
+NOTE: When we load data in the two photons case, we should provide two things: 
+1. "path_to_data" - path to fortran output folder. This is needed to grab XUV photon energies data
+and Hartree Fock energies or electron kinetic energies to load hole's binding energy 
+(if not specified).
+2. "path_to_matrix_elements_emi" or "path_to_matrix_elements_abs" or both - paths to the complex 
+matrix elements. "abs_emi_or_both" parameter in "load_hole" method determines if we want to load
+for absorption only (abs_emi_or_both="abs"). emission only (abs_emi_or_both="emi") or both 
+(abs_emi_or_both="both"). If we want to load for absorption/emission only then we need to specify
+only one corresponding path, if we want to load for both we must specify both paths, otherwise,
+we'll get an assertion error.
 
-# We can also get matrix elements summed over the intermediate channels. Then we have
-# to specify an mj-value since we will be calculating 3j-symbols (internally) when getting these matrix elements.
-# The TwoPhotons class automatically takes care of forbidden channels depening on the choice of (hole, final) and
-# mj.
-# We can get a list of the possible channels like so, for an example of 3p3/2, mj=1/2 to all final states (for emission say):
-abs_or_emi = "emi"
-mj = 0.5
-hole_kappa = -2
-channels_3p3half = two_photons.get_hole_to_final_channels(hole_kappa, abs_or_emi, mj)
-print("Channels from hole 3p3/2 to final continuum states, "
-      "for mj=1/2, are described by these (hole_kappa, final_kappa pairs): ")
-print(channels_3p3half, "\n")
-# Changing mj=1.5 should remove all states ending up in p1/2 for example.
+Finally, I should say that many paths parameters in the "load_hole" method are kept as optional 
+parameters (e.g. path_to_omega, path_to_hf_energies, path_to_sp_ekin). If some of them are not 
+specified (None), those will be consturcted from "path_to_data". However, if you specify THEM ALL, 
+then you may not need "path_to_data", and you can provide any garbage value to it. Since 
+situations when a user specifies all the required paths are very rare, I decided to keep 
+"path_to_data" as mandatory parameter with an option to put any garbage value if you don't really
+need it.
+"""
 
-# Getting the channels is just a helper function to get all the possible channels.
-# We can use this to get the summed matrix elements, for a particular mj, like so:
-for channel in channels_3p3half:
-    final_kappa = channel[1]  # Getting the second element of a (hole_kappa, final_kappa)-tuple.
-    # Here we store the data for a two-photon matrix element in variable called z.
-    # It is the data after summing over all intermediate states including 3j-symbols for a particular mj.
-    # Note that each hole/final state is fully specified by a kappa and an mj-value!
-    z, name = two_photons.get_matrix_elements_for_hole_to_final(hole_kappa, final_kappa, abs_or_emi, mj)
-    # These can be used to form products of matrix elements for absorption/emission, and then the sum over
-    # mj can be performed etc.
-    # The name-variable has some information to be used in plotting labels as well:
-    print("For (hole_kappa, final_kappa) with mj = %i/2:" % (int(2*mj)))
-    print(channel, "$"+name+"$", "\n")
+# load 6p_3/2 to two_photons object
+hole_kappa_6p3half = -2
+hole_n_6p3half = 6
 
-    plt.plot(omega, np.real(z))
+path_to_matrix_emi = (
+    data_dir + "second_photon" + os.path.sep + "m_elements_eF1_-2_5.dat"
+)
+path_to_matrix_abs = (
+    data_dir + "second_photon" + os.path.sep + "m_elements_eF2_-2_5.dat"
+)
 
-plt.show()
+two_photons.load_hole(
+    "both",
+    hole_n_6p3half,
+    hole_kappa_6p3half,
+    data_dir,
+    path_to_matrix_elements_emi=path_to_matrix_emi,  # must specify both paths to matrix elements
+    path_to_matrix_elements_abs=path_to_matrix_abs,
+)  # load for both path simultaneously
+
+# try to realod hole with the same data, just for demonstration purposes
+# we'll get information messages abot the reloading
+two_photons.load_hole(
+    "emi",
+    hole_n_6p3half,
+    hole_kappa_6p3half,
+    data_dir,
+    path_to_matrix_elements_emi=path_to_matrix_emi,  # need to sepcify only one path to matrix elements
+    should_reload=True,
+)  # load for emission path
+two_photons.load_hole(
+    "abs",
+    hole_n_6p3half,
+    hole_kappa_6p3half,
+    data_dir,
+    path_to_matrix_elements_abs=path_to_matrix_abs,  # need to sepcify only one path to matrix elements
+    should_reload=True,
+)  # load for absorption path
+
+# We can get the labels for all possible inonization channels from 6p_3/2 hole:
+labels_from_6p3half = two_photons.get_channel_labels_for_hole(
+    "abs", hole_n_6p3half, hole_kappa_6p3half
+)  # for absorption path
+print(
+    f"\n Possible ionisation channels for absorption path in Radon 6p_3/2: {labels_from_6p3half}\n"
+)
+
+# We can print binding energy for 6p_3/2
+channels_6p3half = two_photons.get_channels_for_hole(
+    "abs", hole_n_6p3half, hole_kappa_6p3half
+)
+hole_6p3half = channels_6p3half.get_hole_object()
+print(f"\n Binding energy for Radon 6p_3/2 is {hole_6p3half.binding_energy}\n")
+
+
+# NOTE: by analogy, you can add more holes (e.g. 6p_{1/2}) to the two_photons object

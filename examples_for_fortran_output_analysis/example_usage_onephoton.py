@@ -49,7 +49,7 @@ data_dir = "fortran_data\\2_-4_64_radon\\"
 """
 To load diagonal matrix elements and diagonal eigenvalues (required for e.g. photoabsorption 
 cross section) we use "load_diag_data" method inside the one_photon object. The method contains 
-"should_reload" parameter that tells wheter we should reinitalize diagonal data if they were
+"should_reload" parameter that tells whether we should reinitalize diagonal data if they were
 previously loaded (False by default).
 """
 
@@ -62,8 +62,8 @@ one_photon.load_diag_data(data_dir, should_reload=True)
 
 """
 To load a hole we call a method named "load_hole" inside the one_photon object. 
-The Fortran program outputs the probability current for ionisation from a hole to the set of 
-possible final states in the continuum (channels). So, when we load a hole we also add all these 
+The Fortran program outputs probability current for ionisation from a hole through 
+the set of possible ionisation paths (channels). So, when we load a hole we also add all these 
 "channels". Furthermore, "load_hole" method tries to find binding energy for the hole (if not 
 specified) based on Hartree Fock energies or electron kinetic energies from the secondphoton 
 folder. "load_hole" method also contains "should_reload" parameter that tells wheter we 
@@ -71,6 +71,14 @@ should reinitalize a hole if that hole was previously loaded (False by default).
 
 The data for loaded holes are stored in the self.__channels dictionary attribute of the 
 one_photon object and can be accessed via the "get_channel_for_hole" method.
+
+Finally, I should say that many paths parameters in the "load_hole" method are kept as 
+optional parameters (e.g. path_to_pcur_all, path_to_omega, path_to_hf_energies, path_to_sp_ekin). 
+If some of them are not specified (None), those will be consturcted from "path_to_data" mandatory
+parameter. However, if you specify THEM ALL, then you may not need "path_to_data", and you can 
+provide any garbage value to it. Since situations when a user specifies all the required paths 
+are very rare,I decided to keep "path_to_data" as mandatory parameter with an option to put any 
+garbage value if you don't really need it.
 """
 
 # load 6p_3/2 to one_photon object

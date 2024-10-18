@@ -389,7 +389,7 @@ class TwoPhotons:
         breakpoint_use=3,
     ):
         """
-        Initializes hole for absorption or emission path, initializes
+        Initializes hole for absorption or emission or both paths, initializes
         corresponding ionization paths and loads data for them.
 
         Params:
@@ -402,13 +402,14 @@ class TwoPhotons:
         path. NOTE: must be specified if abs_emi_or_both is 'emi' or 'both'!!
         path_to_matrix_elements_abs - path to the file containing matrix elements for absorption
         path. NOTE: must be specified if abs_emi_or_both is 'abs' or 'both'!!
-        path_to_omega - path to the omega.dat file for the given hole (usually in
-        pert folders)
+        path_to_omega - path to the omega.dat file with XUV photon energies for the given hole
+        (usually in pert folders). If not specified, constructed for path_to_data
         binding_energy - binding energy for the hole. Allows you to specify the predifined
         value for the hole's binding energy instead of loading it from the simulation data.
-        path_to_hf_energies - path to the file with Hartree Fock energies for the given hole
+        path_to_hf_energies - path to the file with Hartree Fock energies for the given hole.
+        If not specified, constructed for path_to_data
         path_to_sp_ekin - path to the file with kinetic energies for the given hole from
-        secondphoton folder
+        secondphoton folder. If not specified, constructed for path_to_data
         should_reload - tells whether we should reload if the hole was previously
         loaded
         """

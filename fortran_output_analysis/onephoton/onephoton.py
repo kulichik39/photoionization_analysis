@@ -386,20 +386,22 @@ class OnePhoton:
         n_qn - principal quantum number of the hole
         hole_kappa - kappa value of the hole
         path_to_data - path to the output folder with Fortran simulation results
-        path_to_omega - path to the omega.dat file for the given hole (usually in
-        pert folders)
-        path_to_pcur_all - path to file with probabilty current for one photon
-        hole - object of the Hole class containing hole's parameters
-        path_to_amp_all - path to file with amplitudes for one photon
+        path_to_omega - path to the omega.dat file with XUV photon energies for the given hole
+        (usually in pert folders). If not specified, constructed for path_to_data
+        path_to_pcur_all - path to file with probabilty current for one photon.
+        If not specified, constructed for path_to_data
+        path_to_amp_all - path to file with amplitudes for one photon.
+        If not specified, constructed for path_to_data
         path_to_phaseF_all - path to file with the phase for larger relativistic component
-        of the wave function
+        of the wave function. If not specified, constructed for path_to_data
         path_to_phaseG_all - path to file with the phase for smaller relativistic component
-        of the wave function
+        of the wave function. If not specified, constructed for path_to_data
         binding_energy - binding energy for the hole. Allows you to specify the predifined
         value for the hole's binding energy instead of loading it from the simulation data.
-        path_to_hf_energies - path to the file with Hartree Fock energies for the given hole
+        path_to_hf_energies - path to the file with Hartree Fock energies for the given hole.
+        If not specified, constructed for path_to_data
         path_to_sp_ekin - path to the file with kinetic energies for the given hole from
-        secondphoton folder
+        secondphoton folder. If not specified, constructed for path_to_data
         should_reload - tells whether we should reload if the hole was previously
         loaded
         """
