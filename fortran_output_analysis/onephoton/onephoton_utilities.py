@@ -124,11 +124,10 @@ def get_matrix_elements_for_ionisation_path(
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
     channels = one_photon.get_channels_for_hole(n_qn, hole_kappa)
-    ionisation_path = channels.get_ionisation_path(final_kappa)
 
-    return channels.get_raw_amp_data(ionisation_path) * [
-        np.exp(1j * channels.get_raw_phaseF_data(ionisation_path)),
-        np.exp(1j * channels.get_raw_phaseG_data(ionisation_path)),
+    return channels.get_raw_amp_data(final_kappa) * [
+        np.exp(1j * channels.get_raw_phaseF_data(final_kappa)),
+        np.exp(1j * channels.get_raw_phaseG_data(final_kappa)),
     ]
 
 

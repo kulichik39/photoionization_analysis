@@ -188,61 +188,70 @@ class Channels:
         """
         return self.__raw_omega_data
 
-    # TODO: replace ionisation_path parameter to final_kappa to restore encapsulation
-
-    def get_raw_amp_data(self, ionisation_path: IonisationPath):
+    def get_raw_amp_data(self, final_kappa):
         """
-        Returns raw amplitude data for the given ionisation path.
+        Returns raw amplitude data for the given ionisation path (determined by final_kappa).
 
         Params:
-        ionisation_path - object of the IonisationPath class
+        final_kappa - kappa value of the final state
 
         Returns:
         raw amplitudes data
         """
+
+        ionisation_path = self.get_ionisation_path(final_kappa)
         column_index = ionisation_path.column_index
 
         return self.__raw_amp_data[:, column_index]
 
-    def get_raw_phaseF_data(self, ionisation_path: IonisationPath):
+    def get_raw_phaseF_data(self, final_kappa):
         """
-        Returns raw phase of the larger component for the given ionisation path.
+        Returns raw phase of the larger component for the given ionisation path
+        (determined by final_kappa).
 
         Params:
-        ionisation_path - object of the IonisationPath class
+        final_kappa - kappa value of the final state
 
         Returns:
         raw phase of the larger component
         """
+
+        ionisation_path = self.get_ionisation_path(final_kappa)
         column_index = ionisation_path.column_index
 
         return self.__raw_phaseF_data[:, column_index]
 
-    def get_raw_phaseG_data(self, ionisation_path: IonisationPath):
+    def get_raw_phaseG_data(self, final_kappa):
         """
-        Returns raw phase of the smaller component for the given ionisation path.
+        Returns raw phase of the smaller component for the given ionisation path
+        (determined by final_kappa).
 
         Params:
-        ionisation_path - object of the IonisationPath class
+        final_kappa - kappa value of the final state
 
         Returns:
         raw phase of the smaller component
         """
+
+        ionisation_path = self.get_ionisation_path(final_kappa)
         column_index = ionisation_path.column_index
 
         return self.__raw_phaseG_data[:, column_index]
 
-    def get_raw_rate(self, ionisation_path: IonisationPath):
+    def get_raw_rate(self, final_kappa):
         """
-        Returns raw probability current for the given ionisation path.
+        Returns raw probability current for the given ionisation path (determined by final_kappa).
 
         Params:
-        ionisation_path - object of the IonisationPath class
+        final_kappa - kappa value of the final state
 
         Returns:
         raw probability current
         """
+
+        ionisation_path = self.get_ionisation_path(final_kappa)
         column_index = ionisation_path.column_index
+
         return self.__raw_rate_data[:, column_index]
 
     def get_hole_object(self):
