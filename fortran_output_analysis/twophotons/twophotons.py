@@ -370,7 +370,7 @@ class Channels:
     ):
         """
         Returns raw matrix elements corresponding to the given ionization path (determined by
-        intermediate_kappa and final_kappa)
+        intermediate_kappa and final_kappa).
 
         Params:
         intermediate_kappa - kappa value of the intermediate state
@@ -386,17 +386,20 @@ class Channels:
 
         return raw_matrix_elements
 
-    def get_raw_phase_for_ionization_path(self, ionisation_path: IonisationPath):
+    def get_raw_phase_for_ionization_path(self, intermediate_kappa, final_kappa):
         """
-        Returns raw phase data corresponding to the given ionization path
+        Returns raw phase data corresponding to the given ionization path (determined by
+        intermediate_kappa and final_kappa).
 
         Params:
-        ionisation_path - object of the IonisationPath class
+        intermediate_kappa - kappa value of the intermediate state
+        final_kappa - kappa value of the final state
 
         Returns:
-        raw_phase- raw phase values for the ionization path
+        raw_phase - raw phase values for the ionization path
         """
 
+        ionisation_path = self.get_ionisation_path(intermediate_kappa, final_kappa)
         column_index = ionisation_path.column_index
         raw_phase = self.__raw_phase_data[:, column_index]
 
