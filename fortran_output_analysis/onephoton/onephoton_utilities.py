@@ -248,7 +248,7 @@ def get_matrix_elements_with_coulomb_phase(one_photon: OnePhoton, n_qn, hole_kap
 
 
 def prepare_absorption_and_emission_matrices_1sim(
-    one_photon: OnePhoton, n_qn, hole_kappa, Z, steps_per_IR_photon=None
+    one_photon: OnePhoton, n_qn, hole_kappa, Z, g_omega_IR, steps_per_IR_photon=None
 ):
     """
     Works with the case of 1 simulation (only 1 OnePhoton object). Constructs absorption and
@@ -260,6 +260,7 @@ def prepare_absorption_and_emission_matrices_1sim(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR - energy of the IR photon in Hartree
     steps_per_IR_photon - the number of XUV energy steps fitted in the IR photon energy.
     If not specified, the the program calculates it based on the XUV energy data in the
     omega.dat file and value of the IR photon energy
@@ -273,8 +274,6 @@ def prepare_absorption_and_emission_matrices_1sim(
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
     ekin_eV = get_electron_kinetic_energy_eV(one_photon, n_qn, hole_kappa)
-
-    g_omega_IR = one_photon.g_omega_IR  # frequncy of the IR photon (in Hartree)
 
     if not steps_per_IR_photon:
         steps_per_IR_photon = int(
@@ -338,6 +337,8 @@ def prepare_absorption_and_emission_matrices_2sim(
     n_qn,
     hole_kappa,
     Z,
+    g_omega_IR_emi,
+    g_omega_IR_abs,
     energies_mode="both",
 ):
     """
@@ -351,6 +352,8 @@ def prepare_absorption_and_emission_matrices_2sim(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR_emi - energy of the IR photon in Hartree for emission path
+    g_omega_IR_abs - energy of the IR photon in Hartree for absorption path
     energies_mode - tells which energies we take for matrices interpolation. Possible options:
     "emi" - energies from emission object, "abs" - energies from absorption object, "both" -
     combined array from both emission and absorption objects.
@@ -366,9 +369,6 @@ def prepare_absorption_and_emission_matrices_2sim(
 
     ekin_eV_emi = get_electron_kinetic_energy_eV(one_photon_emi, n_qn, hole_kappa)
     ekin_eV_abs = get_electron_kinetic_energy_eV(one_photon_abs, n_qn, hole_kappa)
-
-    g_omega_IR_emi = one_photon_emi.g_omega_IR  # frequncy of the IR photon (in Hartree)
-    g_omega_IR_abs = one_photon_abs.g_omega_IR
 
     # match to the final photoelectron energies
     ekin_eV_emi -= g_omega_IR_emi * g_eV_per_Hartree
@@ -442,7 +442,9 @@ def get_prepared_matrices(
     n_qn,
     hole_kappa,
     Z,
+    g_omega_IR_1,
     one_photon_2: Optional[OnePhoton] = None,
+    g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
 ):
@@ -455,7 +457,9 @@ def get_prepared_matrices(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
+    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, then the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
@@ -475,6 +479,9 @@ def get_prepared_matrices(
 
     if one_photon_2:  # if the second simulation is provided
         one_photon_2.assert_hole_load(n_qn, hole_kappa)
+        assert (
+            g_omega_IR_2
+        ), "IR photon energy for the second simulation is not provided!"
         ekin_eV, M_emi_matched, M_abs_matched = (
             prepare_absorption_and_emission_matrices_2sim(
                 one_photon_1,
@@ -482,6 +489,8 @@ def get_prepared_matrices(
                 n_qn,
                 hole_kappa,
                 Z,
+                g_omega_IR_1,
+                g_omega_IR_2,
                 energies_mode=energies_mode,
             )
         )
@@ -492,6 +501,7 @@ def get_prepared_matrices(
                 n_qn,
                 hole_kappa,
                 Z,
+                g_omega_IR_1,
                 steps_per_IR_photon=steps_per_IR_photon,
             )
         )

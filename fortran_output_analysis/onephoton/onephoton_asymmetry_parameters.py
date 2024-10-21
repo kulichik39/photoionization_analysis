@@ -161,7 +161,9 @@ def get_complex_asymmetry_parameter(
     n_qn,
     hole_kappa,
     Z,
+    g_omega_IR_1,
     one_photon_2: Optional[OnePhoton] = None,
+    g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
 ):
@@ -175,8 +177,10 @@ def get_complex_asymmetry_parameter(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
     one_photon_2 - object of the OnePhoton class specified if we want to consider 2 simulations
     (first for emission, second for absorption)
+    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
@@ -195,7 +199,9 @@ def get_complex_asymmetry_parameter(
         n_qn,
         hole_kappa,
         Z,
+        g_omega_IR_1,
         one_photon_2=one_photon_2,
+        g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )

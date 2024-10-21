@@ -10,7 +10,6 @@ from fortran_output_analysis.common_utility import (
     delay_to_phase,
     unwrap_phase_with_nans,
     exported_mathematica_tensor_to_python_list,
-    compute_omega_diff,
 )
 from fortran_output_analysis.onephoton.onephoton import OnePhoton
 from fortran_output_analysis.onephoton.onephoton_utilities import get_prepared_matrices
@@ -22,6 +21,26 @@ from fortran_output_analysis.onephoton.onephoton_asymmetry_parameters import (
 This namespace contains functions for analyzing delays and phases based on the data from 
 the OnePhoton object.
 """
+
+
+def compute_omega_diff(g_omega_IR_1, g_omega_IR_2=None):
+    """
+    Computes energy difference between absorption and emission paths.
+    Can compute for 1 or 2 simulations.
+
+    Params:
+    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
+    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
+
+    Returns:
+    omega_diff - energy difference between absorption and emission paths
+    """
+    if g_omega_IR_2:  # if two simulations are provided
+        omega_diff = g_omega_IR_1 + g_omega_IR_2
+    else:  # if only one simulation is provided
+        omega_diff = 2.0 * g_omega_IR_1
+
+    return omega_diff
 
 
 def get_wigner_intensity(
@@ -84,7 +103,9 @@ def get_integrated_wigner_delay(
     n_qn,
     hole_kappa,
     Z,
+    g_omega_IR_1,
     one_photon_2: Optional[OnePhoton] = None,
+    g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
 ):
@@ -98,8 +119,10 @@ def get_integrated_wigner_delay(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
+    g_omega_IR_1 - energy of the IR photon in Hartree in the second simulation
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
@@ -117,12 +140,14 @@ def get_integrated_wigner_delay(
         n_qn,
         hole_kappa,
         Z,
+        g_omega_IR_1,
         one_photon_2=one_photon_2,
+        g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
 
     tau_int_wigner = integrated_wigner_delay_from_intensity(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched
@@ -136,7 +161,9 @@ def get_integrated_wigner_phase(
     n_qn,
     hole_kappa,
     Z,
+    g_omega_IR_1,
     one_photon_2: Optional[OnePhoton] = None,
+    g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
@@ -151,8 +178,10 @@ def get_integrated_wigner_phase(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
+    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
@@ -171,12 +200,14 @@ def get_integrated_wigner_phase(
         n_qn,
         hole_kappa,
         Z,
+        g_omega_IR_1,
         one_photon_2=one_photon_2,
+        g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
 
     phase_int_wigner = delay_to_phase(tau_int_wigner, omega_diff)
 
@@ -193,8 +224,10 @@ def get_angular_wigner_delay(
     n_qn,
     hole_kappa,
     Z,
+    g_omega_IR_1,
     angle,
     one_photon_2: Optional[OnePhoton] = None,
+    g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
 ):
@@ -208,9 +241,11 @@ def get_angular_wigner_delay(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
     angle - angle to compute the delay
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
+    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
@@ -228,12 +263,14 @@ def get_angular_wigner_delay(
         n_qn,
         hole_kappa,
         Z,
+        g_omega_IR_1,
         one_photon_2=one_photon_2,
+        g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
 
     tau_ang_wigner = angular_wigner_delay_from_asymmetry_parameter(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched, angle
@@ -247,8 +284,10 @@ def get_angular_wigner_phase(
     n_qn,
     hole_kappa,
     Z,
+    g_omega_IR_1,
     angle,
     one_photon_2: Optional[OnePhoton] = None,
+    g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
@@ -264,9 +303,11 @@ def get_angular_wigner_phase(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
     angle - angle to compute phase
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
+    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
@@ -285,13 +326,15 @@ def get_angular_wigner_phase(
         n_qn,
         hole_kappa,
         Z,
+        g_omega_IR_1,
         angle,
         one_photon_2=one_photon_2,
+        g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
 
     phase_ang_wigner = delay_to_phase(tau_ang_wigner, omega_diff)
 
@@ -306,8 +349,10 @@ def get_wigner_delay(
     n_qn,
     hole_kappa,
     Z,
+    g_omega_IR_1,
     angle,
     one_photon_2: Optional[OnePhoton] = None,
+    g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
 ):
@@ -321,9 +366,11 @@ def get_wigner_delay(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
     angle - angle to compute the delay
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
+    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
@@ -341,12 +388,14 @@ def get_wigner_delay(
         n_qn,
         hole_kappa,
         Z,
+        g_omega_IR_1,
         one_photon_2=one_photon_2,
+        g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
 
     tau_int_wigner = integrated_wigner_delay_from_intensity(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched
@@ -366,8 +415,10 @@ def get_wigner_phase(
     n_qn,
     hole_kappa,
     Z,
+    g_omega_IR_1,
     angle,
     one_photon_2: Optional[OnePhoton] = None,
+    g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
@@ -380,9 +431,11 @@ def get_wigner_phase(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
+    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
     angle - angle to compute the phase
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
+    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
@@ -401,13 +454,15 @@ def get_wigner_phase(
         n_qn,
         hole_kappa,
         Z,
+        g_omega_IR_1,
         angle,
         one_photon_2=one_photon_2,
+        g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
 
     phase_wigner = delay_to_phase(tau_wigner, omega_diff)
 
