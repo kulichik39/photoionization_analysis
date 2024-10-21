@@ -268,6 +268,7 @@ class OnePhoton:
     Grabs and stores data from Fortran simulations in the one photon case.
     """
 
+    # TODO: remove g_omega_IR from initialisation and put it as parameter to corresponding functions
     def __init__(self, atom_name, g_omega_IR):
         # attributes for diag data
         self.__diag_eigenvalues = None

@@ -418,7 +418,7 @@ def match_absorption_and_emission_matrices_2sim(
 
     assert (
         M_abs.shape[0] == M_emi.shape[0]
-    ), "The number of ionisation_paths in absorption and emission matrices is different!"
+    ), "The number of ionisation paths in absorption and emission matrices is different!"
 
     M_emi_matched = np.zeros(
         (M_emi.shape[0], len(energies_final)),
@@ -457,11 +457,13 @@ def get_prepared_matrices(
     Z - charge of the ion
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
-    steps fitted in the IR photon energy. If not specified, the the program calculates it based
+    steps fitted in the IR photon energy. If not specified, then the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
+    NOTE: if two simulations were provided, then the first one corresponds to emission path and
+    the second one to absorption path
 
     Returns:
     ekin_eV - array of phototelctron kinetic energies in eV

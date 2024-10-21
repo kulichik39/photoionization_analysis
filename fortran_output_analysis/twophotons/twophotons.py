@@ -202,6 +202,7 @@ class Channels:
             for j in range(3):  # 3 finals per kappa.
                 final_index = j + i * intermediate_stride
                 final_kappa = int(final_kappas_str[final_index])
+                # TODO: replace comparison with 0 to comparison with reachable kappas from functions
                 if intermediate_kappa != 0 and final_kappa != 0:
                     self.__ionisation_paths[(intermediate_kappa, final_kappa)] = (
                         IonisationPath(

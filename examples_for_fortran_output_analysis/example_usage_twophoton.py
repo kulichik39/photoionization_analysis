@@ -146,10 +146,21 @@ print(f"\n Binding energy for Radon 6p_3/2 is {hole_6p3half.binding_energy}\n")
 # NOTE: by analogy, you can add more holes (e.g. 6p_{1/2}) to the two_photons object
 
 # channels = two_photons.get_channels_for_hole("abs", hole_n_6p3half, hole_kappa_6p3half)
-# ion_path = channels.get_ionisation_path(-1, -2)
-# mat = channels.get_raw_matrix_elements_for_ionization_path(ion_path)
+# mat = channels.get_raw_matrix_elements_for_ionization_path(-1, -2)
 # print(mat.shape)
 # print(mat)
-# phase = channels.get_raw_phase_for_ionization_path(ion_path)
+# phase = channels.get_raw_phase_for_ionization_path(-1, -2)
 # print(phase.shape)
 # print(phase)
+
+# from fortran_output_analysis.twophotons.twophotons_utilities import (
+#     get_matrix_elements_with_coulomb_phase,
+#     get_coupled_matrix_elements_for_all_final_states,
+# )
+
+# Z = 1
+# M = get_matrix_elements_with_coulomb_phase(
+#     two_photons, "emi", hole_n_6p3half, hole_kappa_6p3half, Z
+# )
+# print(M.shape)
+# print(M[-1])
