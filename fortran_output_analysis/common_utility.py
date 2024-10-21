@@ -426,29 +426,6 @@ def delay_to_phase(delay, omega_diff):
     return delay * omega_diff / g_inverse_atomic_frequency_to_attoseconds
 
 
-def compute_omega_diff(
-    photon_object_1,
-    photon_object_2=None,
-):
-    """
-    Computes energy difference between absorption and emission paths.
-    Can compute for 1 or 2 simulations.
-
-    Params:
-    photon_object_1 - OnePhoton or TwoPhoton object corresponding to the first simulation
-    photon_object_2 - OnePhoton or TwoPhoton object corresponding to the second simulation
-
-    Returns:
-    omega_diff - energy difference between absorption and emission paths
-    """
-    if photon_object_2:  # if two simulations are provided
-        omega_diff = photon_object_1.g_omega_IR + photon_object_2.g_omega_IR
-    else:  # if only one simulation is provided
-        omega_diff = 2.0 * photon_object_1.g_omega_IR
-
-    return omega_diff
-
-
 def unwrap_phase_with_nans(phase):
     """Unwraps a phase that contains NaN values by masking out the NaNs."""
 

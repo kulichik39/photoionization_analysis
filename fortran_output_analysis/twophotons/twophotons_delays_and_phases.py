@@ -10,7 +10,6 @@ from fortran_output_analysis.common_utility import (
     delay_to_phase,
     unwrap_phase_with_nans,
     exported_mathematica_tensor_to_python_list,
-    compute_omega_diff,
 )
 from fortran_output_analysis.twophotons.twophotons import TwoPhotons
 from fortran_output_analysis.twophotons.twophotons_utilities import (
@@ -24,6 +23,28 @@ from fortran_output_analysis.twophotons.twophotons_asymmetry_parameters import (
 This namespace contains functions for analyzing delays and phases based on the data from 
 the TwoPhotons object.
 """
+
+
+def compute_omega_diff(
+    two_photons_1: TwoPhotons, two_photons_2: Optional[TwoPhotons] = None
+):
+    """
+    Computes energy difference between absorption and emission paths.
+    Can compute for 1 or 2 simulations.
+
+    Params:
+    two_photons_1 - TwoPhotons object corresponding to the first simulation
+    two_photons_2 - TwoPhotons object corresponding to the second simulation
+
+    Returns:
+    omega_diff - energy difference between absorption and emission paths
+    """
+    if two_photons_2:  # if two simulations are provided
+        omega_diff = two_photons_1.g_omega_IR + two_photons_2.g_omega_IR
+    else:  # if only one simulation is provided
+        omega_diff = 2.0 * two_photons_1.g_omega_IR
+
+    return omega_diff
 
 
 def get_integrated_two_photons_intensity(
@@ -140,7 +161,7 @@ def get_integrated_atomic_delay(
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
+    omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
 
     tau_int_atomic = integrated_atomic_delay_from_intensity(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched
@@ -194,7 +215,7 @@ def get_integrated_atomic_phase(
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
+    omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
 
     phase_int_atomic = delay_to_phase(tau_int_atomic, omega_diff)
 
@@ -249,7 +270,7 @@ def get_angular_atomic_delay(
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
+    omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
 
     tau_ang_atomic = angular_atomic_delay_from_asymmetry_parameters(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched, angle
@@ -307,7 +328,7 @@ def get_angular_atomic_phase(
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
+    omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
 
     phase_ang_atomic = delay_to_phase(tau_ang_atomic, omega_diff)
 
@@ -362,7 +383,7 @@ def get_atomic_delay(
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
+    omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
 
     tau_int_atomic = integrated_atomic_delay_from_intensity(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched
@@ -423,7 +444,7 @@ def get_atomic_phase(
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
+    omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
 
     phase_atomic = delay_to_phase(tau_atomic, omega_diff)
 
