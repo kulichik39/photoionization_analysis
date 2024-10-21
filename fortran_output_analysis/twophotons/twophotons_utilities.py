@@ -204,7 +204,7 @@ def get_coupled_matrix_elements(
     )  # size of the array with XUV photon energies
 
     # Initialize array with final matrix elements for 3 different values of K: 0, 1 and 2
-    # K is order of opertor.
+    # K is the rank of the photon-interaction.
     matrix_elements_coupled = np.zeros((3, energy_size), dtype="complex128")
 
     ionisation_paths = channels.get_all_ionisation_paths()
@@ -283,7 +283,7 @@ def get_coupled_matrix_elements_for_all_final_states(
 
     # initialize array to store matrix elements with the following dimensions:
     # N_kappas_all - number of all final states
-    # 3 - for three values of K (order of operator)
+    # 3 - for three values of K (rank of the photon-interaction)
     # energy_size - size of the array with XUV photon energies
     M = np.zeros((N_kappas_all, 3, energy_size), dtype="complex128")
 
@@ -399,7 +399,7 @@ def get_matrix_elements_with_coulomb_phase(
     )
 
     for i in range(M.shape[0]):  # iterate over final states
-        for j in range(3):  # iterate over K (order of the operator) values
+        for j in range(3):  # iterate over K (rank of the photon-interaction) values
             M[i, j, :] *= np.exp(1j * coul_phase[i, :])
 
     return M
@@ -491,7 +491,7 @@ def match_absorption_and_emission_matrices_1sim(
     )
 
     for i in range(M_abs.shape[0]):  # iterate over final states
-        for j in range(3):  # iterate over K (order of the operator) values
+        for j in range(3):  # iterate over K (rank of the photon-interaction) values
             M_emi_matched[i, j, :], M_abs_matched[i, j, :] = match_matrix_elements_1sim(
                 M_emi[i, j, :], M_abs[i, j, :], steps_per_IR_photon
             )
@@ -606,7 +606,7 @@ def match_absorption_and_emission_matrices_2sim(
         dtype="complex128",
     )
     for i in range(M_abs.shape[0]):  # iterate over final states
-        for j in range(3):  # iterate over K (order of the operator) values
+        for j in range(3):  # iterate over K (rank of the photon-interaction) values
             M_emi_matched[i, j, :], M_abs_matched[i, j, :] = match_matrix_elements_2sim(
                 energies_final,
                 energies_emi,

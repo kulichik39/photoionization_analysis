@@ -131,7 +131,7 @@ def one_photon_asymmetry_parameter(
 
 def get_real_asymmetry_parameter(one_photon: OnePhoton, n_qn, hole_kappa, Z):
     """
-    Computes real asymmetry parameter.
+    Computes real asymmetry parameter in the one photon case.
 
     Params:
     one_photon - object of the OnePhoton class with some loaded holes

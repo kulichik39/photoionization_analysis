@@ -12,19 +12,21 @@ from fortran_output_analysis.common_utility import (
     exported_mathematica_tensor_to_python_list,
     compute_omega_diff,
 )
-from fortran_output_analysis.onephoton.onephoton import OnePhoton
-from fortran_output_analysis.onephoton.onephoton_utilities import get_prepared_matrices
-from fortran_output_analysis.onephoton.onephoton_asymmetry_parameters import (
-    one_photon_asymmetry_parameter,
+from fortran_output_analysis.twophotons.twophotons import TwoPhotons
+from fortran_output_analysis.twophotons.twophotons_utilities import (
+    get_prepared_matrices,
+)
+from fortran_output_analysis.twophotons.twophotons_asymmetry_parameters import (
+    two_photons_asymmetry_parameter,
 )
 
 """
 This namespace contains functions for analyzing delays and phases based on the data from 
-the OnePhoton object.
+the TwoPhotons object.
 """
 
 
-def get_wigner_intensity(
+def get_integrated_two_photons_intensity(
     hole_kappa,
     M_emi,
     M_abs,
@@ -33,12 +35,25 @@ def get_wigner_intensity(
             os.path.dirname(os.path.abspath(__file__)).split(os.path.sep)[:-1]
         ),
         "formula_coefficients",
-        "one_photon",
+        "two_photons",
         "integrated_intensity",
     ),
 ):
     """
-    Computes Wigner intensity for a photoelectron that has absorbed one photon.
+    Computes the integrated signal intensity for a photoelectron that has absorbed two photons.
+    M_emi and M_abs contain the matrix elements and other phases of the wave function for
+    emission and absorption paths respectively.
+    They are organized according to their final kappa like so:
+    m = |hole_kappa|
+    s = sign(hole_kappa)
+    M = [s(m-2), -s(m-1), sm, -s(m+1), s(m+2)] (the values in the list are kappas of final states)
+    Each part of the matrix corresponding to a particular final state contains 3 arrays of matrix
+    elements for K = 0, 1, 2 where K is the rank of photon-interaction. So, M_emi and M_abs have
+    the following shape: (5, 3, size_of_elements_array), where 5 is the number of final states,
+    3 is three different values of K, and size_of_elements_array stands for length of each vector
+    with matrix elements.
+    NOTE: before providing you need to match the original emission and absorption matrices so
+    that they correspond to the same final photoelectron energies.
 
     Params:
     hole_kappa - kappa value of the hole
@@ -49,14 +64,14 @@ def get_wigner_intensity(
     path - path to the file with coefficients for Wigner intensity calculation
 
     Returns:
-    wigner_intensity - array with Wigner intensity values
+    two_photons_integrated_intensity - array with integrated intensity for two photons case
     """
 
     assert (
         M_emi.shape == M_abs.shape
     ), "The shapes of the input matrices must be the same!"
 
-    length = M_emi.shape[1]
+    energy_size = len(M_emi[0][1])
 
     if path[-1] is not os.path.sep:
         path = path + os.path.sep
@@ -67,38 +82,41 @@ def get_wigner_intensity(
     except OSError as e:
         print(e)
         raise NotImplementedError(
-            f"The hole kappa {hole_kappa} is not yet implemented, or the file containing the coefficients could not be found!"
+            "the given initial kappa is not yet implemented, or the file containing the coefficients could not be found"
         )
 
     coeffs = exported_mathematica_tensor_to_python_list(coeffs_file_contents[2])
 
-    wigner_intensity = np.zeros(length, dtype="complex128")
-    for i in range(3):
-        wigner_intensity += coeffs[i] * M_emi[i] * np.conj(M_abs[i])
+    two_photons_integrated_intensity = np.zeros(energy_size, dtype="complex128")
+    for kappa_i in range(5):
+        for K in range(3):
+            two_photons_integrated_intensity += (
+                coeffs[kappa_i][K] * M_emi[kappa_i][K] * np.conj(M_abs[kappa_i][K])
+            )
 
-    return wigner_intensity
+    return two_photons_integrated_intensity
 
 
-def get_integrated_wigner_delay(
-    one_photon_1: OnePhoton,
+def get_integrated_atomic_delay(
+    two_photons_1: TwoPhotons,
     n_qn,
     hole_kappa,
     Z,
-    one_photon_2: Optional[OnePhoton] = None,
+    two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
 ):
     """
-    Computes integrated Wigner delay. Can compute for 1 or 2 simulations.
-    If 2 simulations are provided, then the first one_photon object corresponds
-    to emission path, while the second one_photon object corresponds to absorption path.
+    Computes integrated atomic delay. Can compute for 1 or 2 simulations.
+    If 2 simulations are provided, then the first two_photons object corresponds
+    to emission path, while the second two_photons object corresponds to absorption path.
 
     Params:
-    one_photon_1 - object of the OnePhoton class corresponding to one simulation
+    two_photons_1 - object of the TwoPhotons class corresponding to one simulation
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
-    one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
+    two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
@@ -109,49 +127,49 @@ def get_integrated_wigner_delay(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    tau_int_wigner - values of the integrated Wigner delay
+    tau_int_atomic - values of the integrated atomic delay
     """
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
-        one_photon_1,
+        two_photons_1,
         n_qn,
         hole_kappa,
         Z,
-        one_photon_2=one_photon_2,
+        two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
 
-    tau_int_wigner = integrated_wigner_delay_from_intensity(
+    tau_int_atomic = integrated_atomic_delay_from_intensity(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched
     )
 
-    return ekin_eV, tau_int_wigner
+    return ekin_eV, tau_int_atomic
 
 
-def get_integrated_wigner_phase(
-    one_photon_1: OnePhoton,
+def get_integrated_atomic_phase(
+    two_photons_1: TwoPhotons,
     n_qn,
     hole_kappa,
     Z,
-    one_photon_2: Optional[OnePhoton] = None,
+    two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
 ):
     """
-    Computes integrated wigner phase from integrated wigner delay. Can compute for 1 or 2
-    simulations. If 2 simulations are provided, then the first one_photon object corresponds
-    to emission path, while the second one_photon object corresponds to absorption path.
+    Computes integrated atomic phase from integrated atomic delay. Can compute for 1 or 2
+    simulations. If 2 simulations are provided, then the first two_photons object corresponds
+    to emission path, while the second two_photons object corresponds to absorption path.
 
     Params:
-    one_photon_1 - object of the OnePhoton class corresponding to one simulation
+    two_photons_1 - object of the TwoPhotons class corresponding to one simulation
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
-    one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
+    two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
@@ -163,53 +181,51 @@ def get_integrated_wigner_phase(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    phase_int_wigner - values of the integrated Wigner phase
+    phase_int_atomic - values of the integrated atomic phase
     """
 
-    ekin_eV, tau_int_wigner = get_integrated_wigner_delay(
-        one_photon_1,
+    ekin_eV, tau_int_atomic = get_integrated_atomic_delay(
+        two_photons_1,
         n_qn,
         hole_kappa,
         Z,
-        one_photon_2=one_photon_2,
+        two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
 
-    phase_int_wigner = delay_to_phase(tau_int_wigner, omega_diff)
+    phase_int_atomic = delay_to_phase(tau_int_atomic, omega_diff)
 
     if unwrap:
-        phase_int_wigner = unwrap_phase_with_nans(phase_int_wigner)
+        phase_int_atomic = unwrap_phase_with_nans(phase_int_atomic)
 
-    return ekin_eV, phase_int_wigner
+    return ekin_eV, phase_int_atomic
 
 
-# TODO: remove inefficiency. Instead of calculating delay for one angle, we can immediately
-# calculate for many angles provided in the list/array.
-def get_angular_wigner_delay(
-    one_photon_1: OnePhoton,
+def get_angular_atomic_delay(
+    two_photons_1: TwoPhotons,
     n_qn,
     hole_kappa,
     Z,
     angle,
-    one_photon_2: Optional[OnePhoton] = None,
+    two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
 ):
     """
-    Computes angular part of Wigner delay. Can compute for 1 or 2 simulations.
-    If 2 simulations are provided, then the first one_photon object corresponds
-    to emission path, while the second one_photon object corresponds to absorption path.
+    Computes angular part of atomic delay. Can compute for 1 or 2 simulations.
+    If 2 simulations are provided, then the first two_photons object corresponds
+    to emission path, while the second two_photons object corresponds to absorption path.
 
     Params:
-    one_photon_1 - object of the OnePhoton class corresponding to one simulation
+    two_photons_1 - object of the TwoPhotons class corresponding to one simulation
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
     angle - angle to compute the delay
-    one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
+    two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
@@ -220,52 +236,52 @@ def get_angular_wigner_delay(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    tau_ang_wigner - values of the angular part of Wigner delay
+    tau_ang_atomic - values of the angular part of atomic delay
     """
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
-        one_photon_1,
+        two_photons_1,
         n_qn,
         hole_kappa,
         Z,
-        one_photon_2=one_photon_2,
+        two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
 
-    tau_ang_wigner = angular_wigner_delay_from_asymmetry_parameter(
+    tau_ang_atomic = angular_atomic_delay_from_asymmetry_parameters(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched, angle
     )
 
-    return ekin_eV, tau_ang_wigner
+    return ekin_eV, tau_ang_atomic
 
 
-def get_angular_wigner_phase(
-    one_photon_1: OnePhoton,
+def get_angular_atomic_phase(
+    two_photons_1: TwoPhotons,
     n_qn,
     hole_kappa,
     Z,
     angle,
-    one_photon_2: Optional[OnePhoton] = None,
+    two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
 ):
     """
-    Computes angluar part of Wigner phase from the angular part of Wigner delay.
-    Can compute for 1 or 2 simulations. If 2 simulations are provided, then the first one_photon
-    object corresponds to emission path, while the second one_photon object corresponds to
-    absorption path.
+    Computes angluar part of atomic phase from the angular part of atomic delay.
+    Can compute for 1 or 2 simulations. If 2 simulations are provided, then the first
+    two_photons object corresponds to emission path, while the second two_photons object
+    corresponds to absorption path.
 
     Params:
-    one_photon_1 - object of the OnePhoton class corresponding to one simulation
+    two_photons_1 - object of the TwoPhotons class corresponding to one simulation
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
     angle - angle to compute phase
-    one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
+    two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
@@ -277,52 +293,52 @@ def get_angular_wigner_phase(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    phase_ang_wigner - values of the angular part of Wigner phase
+    phase_ang_atomic - values of the angular part of atomic phase
     """
 
-    ekin_eV, tau_ang_wigner = get_angular_wigner_delay(
-        one_photon_1,
+    ekin_eV, tau_ang_atomic = get_angular_atomic_delay(
+        two_photons_1,
         n_qn,
         hole_kappa,
         Z,
         angle,
-        one_photon_2=one_photon_2,
+        two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
 
-    phase_ang_wigner = delay_to_phase(tau_ang_wigner, omega_diff)
+    phase_ang_atomic = delay_to_phase(tau_ang_atomic, omega_diff)
 
     if unwrap:
-        phase_ang_wigner = unwrap_phase_with_nans(phase_ang_wigner)
+        phase_ang_atomic = unwrap_phase_with_nans(phase_ang_atomic)
 
-    return ekin_eV, phase_ang_wigner
+    return ekin_eV, phase_ang_atomic
 
 
-def get_wigner_delay(
-    one_photon_1: OnePhoton,
+def get_atomic_delay(
+    two_photons_1: TwoPhotons,
     n_qn,
     hole_kappa,
     Z,
     angle,
-    one_photon_2: Optional[OnePhoton] = None,
+    two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
 ):
     """
-    Computes total Wigner delay: integrated + angular part. Can compute for 1 or 2 simulations.
-    If 2 simulations are provided, then the first one_photon object corresponds to emission path,
-    while the second one_photon object corresponds to absorption path.
+    Computes total atomic delay: integrated + angular part. Can compute for 1 or 2 simulations.
+    If 2 simulations are provided, then the first two_photons object corresponds to emission
+    path, while the second two_photons object corresponds to absorption path.
 
     Params:
-    one_photon_1 - object of the OnePhoton class corresponding to one simulation
+    two_photons_1 - object of the TwoPhotons class corresponding to one simulation
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
     angle - angle to compute the delay
-    one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
+    two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
@@ -333,55 +349,55 @@ def get_wigner_delay(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    tau_wigner - array with total Wigner delays
+    tau_atomic - array with total atomic delays
     """
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
-        one_photon_1,
+        two_photons_1,
         n_qn,
         hole_kappa,
         Z,
-        one_photon_2=one_photon_2,
+        two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
 
-    tau_int_wigner = integrated_wigner_delay_from_intensity(
+    tau_int_atomic = integrated_atomic_delay_from_intensity(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched
     )
 
-    tau_ang_wigner = angular_wigner_delay_from_asymmetry_parameter(
+    tau_ang_atomic = angular_atomic_delay_from_asymmetry_parameters(
         hole_kappa, omega_diff, M_emi_matched, M_abs_matched, angle
     )
 
-    tau_wigner = tau_int_wigner + tau_ang_wigner  # total Wigner delay
+    tau_atomic = tau_int_atomic + tau_ang_atomic  # total atomic delay
 
-    return ekin_eV, tau_wigner
+    return ekin_eV, tau_atomic
 
 
-def get_wigner_phase(
-    one_photon_1: OnePhoton,
+def get_atomic_phase(
+    two_photons_1: TwoPhotons,
     n_qn,
     hole_kappa,
     Z,
     angle,
-    one_photon_2: Optional[OnePhoton] = None,
+    two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
 ):
     """
-    Computes total Wigner phase: integrated + angular part from total Wigner delay.
+    Computes total atomic phase: integrated + angular part from total atomic delay.
 
     Params:
-    one_photon_1 - object of the OnePhoton class corresponding to one simulation
+    two_photons_1 - object of the TwoPhotons class corresponding to one simulation
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
     angle - angle to compute the phase
-    one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
+    two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
@@ -393,35 +409,35 @@ def get_wigner_phase(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    phase_wigner - array with total Wigner phases
+    phase_atomic - array with total atomic phases
     """
 
-    ekin_eV, tau_wigner = get_wigner_delay(
-        one_photon_1,
+    ekin_eV, tau_atomic = get_atomic_delay(
+        two_photons_1,
         n_qn,
         hole_kappa,
         Z,
         angle,
-        one_photon_2=one_photon_2,
+        two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
     )
 
-    omega_diff = compute_omega_diff(one_photon_1, photon_object_2=one_photon_2)
+    omega_diff = compute_omega_diff(two_photons_1, photon_object_2=two_photons_2)
 
-    phase_wigner = delay_to_phase(tau_wigner, omega_diff)
+    phase_atomic = delay_to_phase(tau_atomic, omega_diff)
 
     if unwrap:
-        phase_wigner = unwrap_phase_with_nans(phase_wigner)
+        phase_atomic = unwrap_phase_with_nans(phase_atomic)
 
-    return ekin_eV, phase_wigner
+    return ekin_eV, phase_atomic
 
 
-def integrated_wigner_delay_from_intensity(
+def integrated_atomic_delay_from_intensity(
     hole_kappa, omega_diff, M_emi_matched, M_abs_matched
 ):
     """
-    Computes integrated Wigner delay from Wigner intenisty.
+    Computes integrated atomic delay from two photons integrated intenisty.
 
     Params:
     hole_kappa - kappa value of the hole
@@ -430,21 +446,25 @@ def integrated_wigner_delay_from_intensity(
     M_abs_matched - matrix elements for absorption path matched to the final energies
 
     Returns:
-    tau_int_wigner - array with integrated Wigner delay
+    tau_int_atomic - array with integrated atomic delay
     """
 
-    wigner_intensity = get_wigner_intensity(hole_kappa, M_emi_matched, M_abs_matched)
+    two_photons_integrated_intensity = get_integrated_two_photons_intensity(
+        hole_kappa, M_emi_matched, M_abs_matched
+    )
 
-    tau_int_wigner = (
+    tau_int_atomic = (
         g_inverse_atomic_frequency_to_attoseconds
-        * np.angle(wigner_intensity)
+        * np.angle(two_photons_integrated_intensity)
         / omega_diff
     )
 
-    return tau_int_wigner
+    return tau_int_atomic
 
 
-def angular_wigner_delay_from_asymmetry_parameter(
+# TODO: remove inefficiency. Instead of calculating delay for one angle, we can immediately
+# calculate for many angles provided in the list/array.
+def angular_atomic_delay_from_asymmetry_parameters(
     hole_kappa,
     omega_diff,
     M_emi_matched,
@@ -452,7 +472,7 @@ def angular_wigner_delay_from_asymmetry_parameter(
     angle,
 ):
     """
-    Computes angular part of Wigner delay from the complex assymetry parameter.
+    Computes angular part of atomic delay from the complex assymetry parameters.
 
     Params:
     hole_kappa - kappa value of the hole
@@ -462,19 +482,25 @@ def angular_wigner_delay_from_asymmetry_parameter(
     angle - angle to compute delay
 
     Returns:
-    tau_ang_wigner - array with angular part of Wigner delay
+    tau_ang_atomic - array with angular part of atomic delay
     """
 
-    b2_complex, _ = one_photon_asymmetry_parameter(
-        hole_kappa, M_emi_matched, M_abs_matched, "cross"
-    )  # complex assymetry parameter for one photon case
+    b2_complex, _ = two_photons_asymmetry_parameter(
+        2, hole_kappa, M_emi_matched, M_abs_matched, "cross"
+    )  # 2nd order complex assymetry parameter
 
-    tau_ang_wigner = (
+    b4_complex, _ = two_photons_asymmetry_parameter(
+        4, hole_kappa, M_emi_matched, M_abs_matched, "cross"
+    )  # 2nd order complex assymetry parameter
+
+    tau_ang_atomic = (
         g_inverse_atomic_frequency_to_attoseconds
         * np.angle(
-            1.0 + b2_complex * legendre(2)(np.array(np.cos(math.radians(angle))))
+            1.0
+            + b2_complex * legendre(2)(np.array(np.cos(math.radians(angle))))
+            + b4_complex * legendre(4)(np.array(np.cos(math.radians(angle))))
         )
         / omega_diff
     )
 
-    return tau_ang_wigner
+    return tau_ang_atomic
