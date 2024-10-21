@@ -217,15 +217,13 @@ def get_integrated_wigner_phase(
     return ekin_eV, phase_int_wigner
 
 
-# TODO: remove inefficiency. Instead of calculating delay for one angle, we can immediately
-# calculate for many angles provided in the list/array.
 def get_angular_wigner_delay(
     one_photon_1: OnePhoton,
     n_qn,
     hole_kappa,
     Z,
     g_omega_IR_1,
-    angle,
+    angles,
     one_photon_2: Optional[OnePhoton] = None,
     g_omega_IR_2=None,
     steps_per_IR_photon=None,
@@ -242,7 +240,7 @@ def get_angular_wigner_delay(
     hole_kappa - kappa value of the hole
     Z - charge of the ion
     g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
-    angle - angle to compute the delay
+    angles - array of angles to compute the delay for
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
     g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
@@ -255,7 +253,7 @@ def get_angular_wigner_delay(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    tau_ang_wigner - values of the angular part of Wigner delay
+    tau_ang_wigner - values of the angular part of Wigner delay for specified angles
     """
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
@@ -273,7 +271,7 @@ def get_angular_wigner_delay(
     omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
 
     tau_ang_wigner = angular_wigner_delay_from_asymmetry_parameter(
-        hole_kappa, omega_diff, M_emi_matched, M_abs_matched, angle
+        hole_kappa, ekin_eV, omega_diff, M_emi_matched, M_abs_matched, angles
     )
 
     return ekin_eV, tau_ang_wigner
@@ -285,7 +283,7 @@ def get_angular_wigner_phase(
     hole_kappa,
     Z,
     g_omega_IR_1,
-    angle,
+    angles,
     one_photon_2: Optional[OnePhoton] = None,
     g_omega_IR_2=None,
     steps_per_IR_photon=None,
@@ -304,7 +302,7 @@ def get_angular_wigner_phase(
     hole_kappa - kappa value of the hole
     Z - charge of the ion
     g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
-    angle - angle to compute phase
+    angles - array of angles to compute the phase for
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
     g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
@@ -318,7 +316,7 @@ def get_angular_wigner_phase(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    phase_ang_wigner - values of the angular part of Wigner phase
+    phase_ang_wigner - values of the angular part of Wigner phase for specified angles
     """
 
     ekin_eV, tau_ang_wigner = get_angular_wigner_delay(
@@ -327,7 +325,7 @@ def get_angular_wigner_phase(
         hole_kappa,
         Z,
         g_omega_IR_1,
-        angle,
+        angles,
         one_photon_2=one_photon_2,
         g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
@@ -339,7 +337,8 @@ def get_angular_wigner_phase(
     phase_ang_wigner = delay_to_phase(tau_ang_wigner, omega_diff)
 
     if unwrap:
-        phase_ang_wigner = unwrap_phase_with_nans(phase_ang_wigner)
+        for i in range(len(angles)):
+            phase_ang_wigner[i, :] = unwrap_phase_with_nans(phase_ang_wigner[i, :])
 
     return ekin_eV, phase_ang_wigner
 
@@ -350,7 +349,7 @@ def get_wigner_delay(
     hole_kappa,
     Z,
     g_omega_IR_1,
-    angle,
+    angles,
     one_photon_2: Optional[OnePhoton] = None,
     g_omega_IR_2=None,
     steps_per_IR_photon=None,
@@ -367,7 +366,7 @@ def get_wigner_delay(
     hole_kappa - kappa value of the hole
     Z - charge of the ion
     g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
-    angle - angle to compute the delay
+    angles - array of angles to compute the delay for
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
     g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
@@ -380,7 +379,7 @@ def get_wigner_delay(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    tau_wigner - array with total Wigner delays
+    tau_wigner - array with total Wigner delays for specified angles
     """
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
@@ -402,10 +401,15 @@ def get_wigner_delay(
     )
 
     tau_ang_wigner = angular_wigner_delay_from_asymmetry_parameter(
-        hole_kappa, omega_diff, M_emi_matched, M_abs_matched, angle
+        hole_kappa, ekin_eV, omega_diff, M_emi_matched, M_abs_matched, angles
     )
 
-    tau_wigner = tau_int_wigner + tau_ang_wigner  # total Wigner delay
+    N_angles = len(angles)
+
+    tau_wigner = np.zeros((N_angles, len(ekin_eV)))
+
+    for i in range(N_angles):
+        tau_wigner[i, :] = tau_int_wigner + tau_ang_wigner[i, :]
 
     return ekin_eV, tau_wigner
 
@@ -416,7 +420,7 @@ def get_wigner_phase(
     hole_kappa,
     Z,
     g_omega_IR_1,
-    angle,
+    angles,
     one_photon_2: Optional[OnePhoton] = None,
     g_omega_IR_2=None,
     steps_per_IR_photon=None,
@@ -432,7 +436,7 @@ def get_wigner_phase(
     hole_kappa - kappa value of the hole
     Z - charge of the ion
     g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
-    angle - angle to compute the phase
+    angles - array of angles to compute the phase for
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
     g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
@@ -446,7 +450,7 @@ def get_wigner_phase(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    phase_wigner - array with total Wigner phases
+    phase_wigner - array with total Wigner phases for specified angles
     """
 
     ekin_eV, tau_wigner = get_wigner_delay(
@@ -455,7 +459,7 @@ def get_wigner_phase(
         hole_kappa,
         Z,
         g_omega_IR_1,
-        angle,
+        angles,
         one_photon_2=one_photon_2,
         g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
@@ -464,10 +468,13 @@ def get_wigner_phase(
 
     omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
 
+    N_angles = len(angles)
+
     phase_wigner = delay_to_phase(tau_wigner, omega_diff)
 
     if unwrap:
-        phase_wigner = unwrap_phase_with_nans(phase_wigner)
+        for i in range(len(angles)):
+            phase_wigner[i, :] = unwrap_phase_with_nans(phase_wigner[i, :])
 
     return ekin_eV, phase_wigner
 
@@ -501,35 +508,43 @@ def integrated_wigner_delay_from_intensity(
 
 def angular_wigner_delay_from_asymmetry_parameter(
     hole_kappa,
+    ekin_eV,
     omega_diff,
     M_emi_matched,
     M_abs_matched,
-    angle,
+    angles,
 ):
     """
     Computes angular part of Wigner delay from the complex assymetry parameter.
 
     Params:
     hole_kappa - kappa value of the hole
+    ekin_eV - array of photoelectron kinetic energies in eV
     omega_diff - energy difference between absorption and emission paths
     M_emi_matched - matrix elements for emission path matched to the final energies
     M_abs_matched - matrix elements for absorption path matched to the final energies
-    angle - angle to compute delay
+    angles - array of angles to compute the delay for
 
     Returns:
-    tau_ang_wigner - array with angular part of Wigner delay
+    tau_ang_wigner - array with angular part of Wigner delay for specified angles
     """
 
     b2_complex, _ = one_photon_asymmetry_parameter(
         hole_kappa, M_emi_matched, M_abs_matched, "cross"
     )  # complex assymetry parameter for one photon case
 
-    tau_ang_wigner = (
-        g_inverse_atomic_frequency_to_attoseconds
-        * np.angle(
-            1.0 + b2_complex * legendre(2)(np.array(np.cos(math.radians(angle))))
+    N_angles = len(angles)
+
+    tau_ang_wigner = np.zeros((N_angles, len(ekin_eV)))
+
+    for i in range(N_angles):
+        angle = angles[i]
+        tau_ang_wigner[i, :] = (
+            g_inverse_atomic_frequency_to_attoseconds
+            * np.angle(
+                1.0 + b2_complex * legendre(2)(np.array(np.cos(math.radians(angle))))
+            )
+            / omega_diff
         )
-        / omega_diff
-    )
 
     return tau_ang_wigner

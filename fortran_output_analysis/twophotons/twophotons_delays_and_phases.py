@@ -230,7 +230,7 @@ def get_angular_atomic_delay(
     n_qn,
     hole_kappa,
     Z,
-    angle,
+    angles,
     two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
@@ -245,7 +245,7 @@ def get_angular_atomic_delay(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
-    angle - angle to compute the delay
+    angles - array of angles to compute the delay for
     two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
@@ -257,7 +257,7 @@ def get_angular_atomic_delay(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    tau_ang_atomic - values of the angular part of atomic delay
+    tau_ang_atomic - values of the angular part of atomic delay for specified angles
     """
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
@@ -273,7 +273,7 @@ def get_angular_atomic_delay(
     omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
 
     tau_ang_atomic = angular_atomic_delay_from_asymmetry_parameters(
-        hole_kappa, omega_diff, M_emi_matched, M_abs_matched, angle
+        hole_kappa, ekin_eV, omega_diff, M_emi_matched, M_abs_matched, angles
     )
 
     return ekin_eV, tau_ang_atomic
@@ -284,7 +284,7 @@ def get_angular_atomic_phase(
     n_qn,
     hole_kappa,
     Z,
-    angle,
+    angles,
     two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
@@ -301,7 +301,7 @@ def get_angular_atomic_phase(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
-    angle - angle to compute phase
+    angles - array of angles to compute the phase for
     two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
@@ -314,7 +314,7 @@ def get_angular_atomic_phase(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    phase_ang_atomic - values of the angular part of atomic phase
+    phase_ang_atomic - values of the angular part of atomic phase for specified angles
     """
 
     ekin_eV, tau_ang_atomic = get_angular_atomic_delay(
@@ -322,7 +322,7 @@ def get_angular_atomic_phase(
         n_qn,
         hole_kappa,
         Z,
-        angle,
+        angles,
         two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
@@ -333,7 +333,8 @@ def get_angular_atomic_phase(
     phase_ang_atomic = delay_to_phase(tau_ang_atomic, omega_diff)
 
     if unwrap:
-        phase_ang_atomic = unwrap_phase_with_nans(phase_ang_atomic)
+        for i in range(len(angles)):
+            phase_ang_atomic[i, :] = unwrap_phase_with_nans(phase_ang_atomic[i, :])
 
     return ekin_eV, phase_ang_atomic
 
@@ -343,7 +344,7 @@ def get_atomic_delay(
     n_qn,
     hole_kappa,
     Z,
-    angle,
+    angles,
     two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
@@ -358,7 +359,7 @@ def get_atomic_delay(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
-    angle - angle to compute the delay
+    angles - array of angles to compute the delay for
     two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
@@ -370,7 +371,7 @@ def get_atomic_delay(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    tau_atomic - array with total atomic delays
+    tau_atomic - array with total atomic delays for specified angles
     """
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
@@ -390,10 +391,15 @@ def get_atomic_delay(
     )
 
     tau_ang_atomic = angular_atomic_delay_from_asymmetry_parameters(
-        hole_kappa, omega_diff, M_emi_matched, M_abs_matched, angle
+        hole_kappa, ekin_eV, omega_diff, M_emi_matched, M_abs_matched, angles
     )
 
-    tau_atomic = tau_int_atomic + tau_ang_atomic  # total atomic delay
+    N_angles = len(angles)
+
+    tau_atomic = np.zeros((N_angles, len(ekin_eV)))
+
+    for i in range(N_angles):
+        tau_atomic[i, :] = tau_int_atomic + tau_ang_atomic[i, :]  # total atomic delay
 
     return ekin_eV, tau_atomic
 
@@ -403,7 +409,7 @@ def get_atomic_phase(
     n_qn,
     hole_kappa,
     Z,
-    angle,
+    angles,
     two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
@@ -417,7 +423,7 @@ def get_atomic_phase(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
-    angle - angle to compute the phase
+    angles - array of angles to compute the phase for
     two_photons_2 - second object of the TwoPhotons class if we want to consider 2 simulations
     (first for emission, second for absorption)
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
@@ -430,7 +436,7 @@ def get_atomic_phase(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
-    phase_atomic - array with total atomic phases
+    phase_atomic - array with total atomic phases for specified angles
     """
 
     ekin_eV, tau_atomic = get_atomic_delay(
@@ -438,7 +444,7 @@ def get_atomic_phase(
         n_qn,
         hole_kappa,
         Z,
-        angle,
+        angles,
         two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
@@ -449,7 +455,8 @@ def get_atomic_phase(
     phase_atomic = delay_to_phase(tau_atomic, omega_diff)
 
     if unwrap:
-        phase_atomic = unwrap_phase_with_nans(phase_atomic)
+        for i in range(len(angles)):
+            phase_atomic[i, :] = unwrap_phase_with_nans(phase_atomic[i, :])
 
     return ekin_eV, phase_atomic
 
@@ -487,23 +494,25 @@ def integrated_atomic_delay_from_intensity(
 # calculate for many angles provided in the list/array.
 def angular_atomic_delay_from_asymmetry_parameters(
     hole_kappa,
+    ekin_eV,
     omega_diff,
     M_emi_matched,
     M_abs_matched,
-    angle,
+    angles,
 ):
     """
     Computes angular part of atomic delay from the complex assymetry parameters.
 
     Params:
     hole_kappa - kappa value of the hole
+    ekin_eV - array of photoelectron kinetic energies in eV
     omega_diff - energy difference between absorption and emission paths
     M_emi_matched - matrix elements for emission path matched to the final energies
     M_abs_matched - matrix elements for absorption path matched to the final energies
-    angle - angle to compute delay
+    angles - array of angles to compute the delay for
 
     Returns:
-    tau_ang_atomic - array with angular part of atomic delay
+    tau_ang_atomic - array with angular part of atomic delay for specified angles
     """
 
     b2_complex, _ = two_photons_asymmetry_parameter(
@@ -514,14 +523,20 @@ def angular_atomic_delay_from_asymmetry_parameters(
         4, hole_kappa, M_emi_matched, M_abs_matched, "cross"
     )  # 2nd order complex assymetry parameter
 
-    tau_ang_atomic = (
-        g_inverse_atomic_frequency_to_attoseconds
-        * np.angle(
-            1.0
-            + b2_complex * legendre(2)(np.array(np.cos(math.radians(angle))))
-            + b4_complex * legendre(4)(np.array(np.cos(math.radians(angle))))
+    N_angles = len(angles)
+
+    tau_ang_atomic = np.zeros((N_angles, len(ekin_eV)))
+
+    for i in range(N_angles):
+        angle = angles[i]
+        tau_ang_atomic[i, :] = (
+            g_inverse_atomic_frequency_to_attoseconds
+            * np.angle(
+                1.0
+                + b2_complex * legendre(2)(np.array(np.cos(math.radians(angle))))
+                + b4_complex * legendre(4)(np.array(np.cos(math.radians(angle))))
+            )
+            / omega_diff
         )
-        / omega_diff
-    )
 
     return tau_ang_atomic

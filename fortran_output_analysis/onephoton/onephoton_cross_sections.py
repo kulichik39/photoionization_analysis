@@ -366,7 +366,7 @@ def interploate_photoelectron_emission_cross_section(
 
 
 def get_angular_part_of_cross_section(
-    one_photon: OnePhoton, n_qn, hole_kappa, Z, angle
+    one_photon: OnePhoton, n_qn, hole_kappa, Z, angles
 ):
     """
     Computes angular part of the total cross section for the given hole.
@@ -376,20 +376,27 @@ def get_angular_part_of_cross_section(
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
-    angle - angle to compute cross section
+    angles - array of angles to compute cross section for
 
     Returns:
     ekin_eV - array of photoelectron kinetic energy in eV
-    angular_part - angular part of the cross section
+    angular_part - angular part of the cross section for different angles
     """
 
     one_photon.assert_hole_load(n_qn, hole_kappa)
 
     ekin_eV, b2_real = get_real_asymmetry_parameter(one_photon, n_qn, hole_kappa, Z)
 
-    angular_part = 1 + b2_real * legendre(2)(
-        np.array(np.cos(math.radians(angle)))
+    N_angles = len(angles)
+    angular_part = np.zeros(
+        (N_angles, len(ekin_eV))
     )  # angluar part of the cross section
+
+    for i in range(N_angles):
+        angle = angles[i]
+        angular_part[i, :] = 1 + b2_real * legendre(2)(
+            np.array(np.cos(math.radians(angle)))
+        )
 
     return ekin_eV, angular_part
 
@@ -399,21 +406,21 @@ def get_total_cross_section_for_hole(
     n_qn,
     hole_kappa,
     Z,
-    angle,
+    angles,
     mode="pcur",
     divide_omega=True,
     relativistic=True,
 ):
     """
     Computes total cross section (integrated part * angular part) for the given hole and
-    given angle.
+    given angles.
 
     Params:
     one_photon - object of the OnePhoton class with some loaded holes
     n_qn - principal quantum number of the hole
     hole_kappa - kappa value of the hole
     Z - charge of the ion
-    angle - angle to compute cross section
+    angles - array of angles to compute cross section for
     mode - for calculation of the integrated part: "pcur" or "amp".
     "pcur" means calculation from the probability current, "amp" means calculcation from matrix
     amplitudes
@@ -423,10 +430,10 @@ def get_total_cross_section_for_hole(
 
     Returns:
     ekin_eV - array of photoelectron kinetic energy in eV
-    angular_part - total cross section
+    total_cs - total cross section for different angles
     """
 
-    _, integrated_part = get_total_integrated_cross_section_for_hole(
+    ekin_eV, integrated_part = get_total_integrated_cross_section_for_hole(
         one_photon,
         n_qn,
         hole_kappa,
@@ -434,8 +441,16 @@ def get_total_cross_section_for_hole(
         divide_omega=divide_omega,
         relativistic=relativistic,
     )
-    ekin_eV, angular_part = get_angular_part_of_cross_section(
-        one_photon, n_qn, hole_kappa, Z, angle
+
+    N_angles = len(angles)
+
+    total_cs = np.zeros((N_angles, len(ekin_eV)))  # total cross section
+
+    _, angular_part = get_angular_part_of_cross_section(
+        one_photon, n_qn, hole_kappa, Z, angles
     )
 
-    return ekin_eV, integrated_part * angular_part
+    for i in range(N_angles):
+        total_cs[i, :] = integrated_part * angular_part[i, :]
+
+    return ekin_eV, total_cs
