@@ -490,8 +490,6 @@ def integrated_atomic_delay_from_intensity(
     return tau_int_atomic
 
 
-# TODO: remove inefficiency. Instead of calculating delay for one angle, we can immediately
-# calculate for many angles provided in the list/array.
 def angular_atomic_delay_from_asymmetry_parameters(
     hole_kappa,
     ekin_eV,
