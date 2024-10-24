@@ -230,7 +230,8 @@ def get_coupled_matrix_elements(
             for K in [0, 2]:
                 # Multiply by the prefactor and store it in the final matrix
                 matrix_elements_coupled[K, :] += (
-                    (2 * K + 1)
+                    np.power(-1, hole_j + final_j + K)
+                    * (2 * K + 1)
                     * float(wigner_3j(1, 1, K, 0, 0, 0))
                     * matrix_elements
                     * float(wigner_6j(1, 1, K, hole_j, float(final_j), intermediate_j))
