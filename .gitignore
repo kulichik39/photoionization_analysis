@@ -140,3 +140,6 @@ fortran_data/
 
 # unnecessary Pyhton files
 train.py
+
+# folder with analysis
+analysis/
