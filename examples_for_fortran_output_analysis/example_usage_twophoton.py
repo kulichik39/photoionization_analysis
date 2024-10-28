@@ -280,7 +280,7 @@ en, delay = atomic.get_atomic_delay(
 plt.figure("Total atomic delay")
 for i in range(len(angles)):
     plt.plot(
-        en + hole_6p3half.binding_energy * g_eV_per_Hartree,
+        en,
         delay[i, :],
         label=f"{angles[i]}",
     )
