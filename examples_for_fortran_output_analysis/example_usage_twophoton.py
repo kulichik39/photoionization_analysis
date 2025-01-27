@@ -21,8 +21,7 @@ In this example, we'll use the second approach.
 """
 
 # append this repository to our system path
-repo_path = "D:\\photoionization_analysis"
-sys.path.append(repo_path)
+sys.path.append(os.getcwd())
 
 # now we can easily import our TwoPhotons class
 from fortran_output_analysis.twophotons.twophotons import TwoPhotons, Channels

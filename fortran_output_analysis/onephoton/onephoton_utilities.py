@@ -275,7 +275,7 @@ def prepare_absorption_and_emission_matrices_1sim(
 
     ekin_eV = get_electron_kinetic_energy_eV(one_photon, n_qn, hole_kappa)
 
-    if not steps_per_IR_photon:
+    if steps_per_IR_photon is None:
         steps_per_IR_photon = int(
             g_omega_IR / ((ekin_eV[1] - ekin_eV[0]) / g_eV_per_Hartree)
         )

@@ -21,8 +21,7 @@ in the example_usage_twophoton.py file.
 """
 
 # append this repository to our system path to easily import all the necessary modules
-repo_path = "D:\\photoionization_analysis"
-sys.path.append(repo_path)
+sys.path.append(os.getcwd())
 
 
 from fortran_output_analysis.twophotons.twophotons import TwoPhotons

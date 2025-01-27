@@ -1,4 +1,5 @@
 import sys
+import os
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -19,8 +20,7 @@ in the example_usage_onephoton.py file.
 """
 
 # append this repository to our system path to easily import all the necessary modules
-repo_path = "D:\\photoionization_analysis"
-sys.path.append(repo_path)
+sys.path.append(os.getcwd())
 
 
 # initialize two one_photon objects, then load data for the hole

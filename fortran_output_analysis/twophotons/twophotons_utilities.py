@@ -228,10 +228,18 @@ def get_coupled_matrix_elements(
             )
 
             for K in [0, 2]:
+                # NOTE: the thing commented below is probably incorrect, but I keep it just in case
+                # matrix_elements_coupled[K, :] += (
+                #     np.power(-1, hole_j + final_j + K)
+                #     * (2 * K + 1)
+                #     * float(wigner_3j(1, 1, K, 0, 0, 0))
+                #     * matrix_elements
+                #     * float(wigner_6j(1, 1, K, hole_j, float(final_j), intermediate_j))
+                # )
+
                 # Multiply by the prefactor and store it in the final matrix
                 matrix_elements_coupled[K, :] += (
-                    np.power(-1, hole_j + final_j + K)
-                    * (2 * K + 1)
+                    (2 * K + 1)
                     * float(wigner_3j(1, 1, K, 0, 0, 0))
                     * matrix_elements
                     * float(wigner_6j(1, 1, K, hole_j, float(final_j), intermediate_j))
@@ -436,7 +444,7 @@ def prepare_absorption_and_emission_matrices_1sim(
 
     g_omega_IR = two_photons.g_omega_IR  # frequncy of the IR photon (in Hartree)
 
-    if not steps_per_IR_photon:
+    if steps_per_IR_photon is None:
         steps_per_IR_photon = int(
             g_omega_IR / ((ekin_eV[1] - ekin_eV[0]) / g_eV_per_Hartree)
         )

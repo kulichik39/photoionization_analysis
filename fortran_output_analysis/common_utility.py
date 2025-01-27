@@ -314,7 +314,7 @@ def wigner_eckart_phase(final_kappa, mj):
     return np.power(-1.0, (j_from_kappa(final_kappa) - mj))
 
 
-def coulomb_phase(kappa, energy, Z, use_relativistic_wavenumber=True):
+def coulomb_phase(kappa, energy, Z, use_relativistic_wavenumber=False):
     """This is the definition of the phase of the Coulomb function,
     both the angular momentum part and the so-called Coulomb phase.
     Electron energy should be given in atomic units.
@@ -337,7 +337,7 @@ def coulomb_phase(kappa, energy, Z, use_relativistic_wavenumber=True):
     return -b - l * np.pi / 2
 
 
-def wavenumber(ekin, relativistic=True):
+def wavenumber(ekin, relativistic=False):
     """Returns the wave number (k-value)."""
 
     ekin_copy = ekin.copy()
