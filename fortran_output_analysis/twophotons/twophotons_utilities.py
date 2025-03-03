@@ -9,11 +9,11 @@ from fortran_output_analysis.common_utility import (
     match_matrix_elements_1sim,
     final_energies_for_matching_2sim,
     match_matrix_elements_2sim,
+    assert_abs_or_emi,
 )
 from fortran_output_analysis.twophotons.twophotons import (
     TwoPhotons,
     final_kappas,
-    assert_abs_or_emi,
     Channels,
 )
 

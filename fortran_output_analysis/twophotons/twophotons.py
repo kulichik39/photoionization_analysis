@@ -11,7 +11,10 @@ from fortran_output_analysis.common_utility import (
     Hole,
     load_raw_data,
     construct_hole_name,
+    assert_abs_or_emi,
 )
+
+from fortran_output_analysis.onephoton.onephoton import final_kappas as final_kappas_1ph
 
 
 class IonisationPath:
@@ -50,17 +53,6 @@ class IonisationPath:
 
         self.file_column_index = file_col_idx
         self.column_index = col_idx
-
-
-def assert_abs_or_emi(abs_or_emi):
-    """
-    Asserts that abs_or_emi parameter takes only "abs" or "emi" values.
-    """
-
-    assert abs_or_emi in (
-        "abs",
-        "emi",
-    ), "abs_or_emi parameter can only be 'abs' or 'emi'!"
 
 
 def convert_abs_or_emi_to_string(abs_or_emi):
@@ -186,6 +178,11 @@ class Channels:
             hole_kappa == self.__hole.kappa
         ), "Mismatch between hole kappa read from file, and the input to Channels constructor"
 
+        # list of possible intermediate kappas (kappas after one photon)
+        possible_inter_kappas = final_kappas_1ph(hole_kappa, only_reachable=True)
+        # list of possible final kappas (kappas after two photons)
+        possible_final_kappas = final_kappas(hole_kappa, only_reachable=True)
+
         intermediate_kappas_str = split_first_line[2:5]
         final_kappas_str = split_first_line[5:]
 
@@ -202,8 +199,10 @@ class Channels:
             for j in range(3):  # 3 finals per kappa.
                 final_index = j + i * intermediate_stride
                 final_kappa = int(final_kappas_str[final_index])
-                # TODO: replace comparison with 0 to comparison with reachable kappas from functions
-                if intermediate_kappa != 0 and final_kappa != 0:
+                if (
+                    intermediate_kappa in possible_inter_kappas
+                    and final_kappa in possible_final_kappas
+                ):
                     self.__ionisation_paths[(intermediate_kappa, final_kappa)] = (
                         IonisationPath(
                             intermediate_kappa,
@@ -509,7 +508,7 @@ class TwoPhotons:
                     if abs_emi_or_both == "both"
                     else convert_abs_or_emi_to_string(abs_emi_or_both)
                 )
-                print(f"Reload {hole.name} hole for {message_string } path!")
+                print(f"Reload {hole.name} hole for {message_string} path!")
 
             # If the path to the omega file was not specified we assume that it is in the
             # pert folder.

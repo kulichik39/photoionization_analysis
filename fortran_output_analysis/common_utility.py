@@ -525,3 +525,14 @@ def match_matrix_elements_2sim(
     abs_elements_matched = np.interp(energies_final, energies_abs, abs_elements)
 
     return emi_elements_matched, abs_elements_matched
+
+
+def assert_abs_or_emi(abs_or_emi):
+    """
+    Asserts that abs_or_emi parameter takes only "abs" or "emi" values.
+    """
+
+    assert abs_or_emi in (
+        "abs",
+        "emi",
+    ), "abs_or_emi parameter can only be 'abs' or 'emi'!"
