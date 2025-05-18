@@ -143,3 +143,6 @@ train.py
 
 # folder with analysis
 analysis/
+
+# folder with plots
+plots/

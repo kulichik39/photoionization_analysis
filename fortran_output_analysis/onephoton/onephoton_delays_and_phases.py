@@ -122,7 +122,7 @@ def get_integrated_wigner_delay(
     g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
     one_photon_2 - second object of the OnePhoton class if we want to consider 2 simulations
     (first for emission, second for absorption)
-    g_omega_IR_1 - energy of the IR photon in Hartree in the second simulation
+    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
     steps_per_IR_photon - Required for 1 simulation only. Represents the number of XUV energy
     steps fitted in the IR photon energy. If not specified, the the program calculates it based
     on the XUV energy data in the omega.dat file and value of the IR photon energy.
