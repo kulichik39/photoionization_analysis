@@ -492,7 +492,7 @@ def final_energies_for_matching_2sim(energies_emi, energies_abs, energies_mode):
         "emi",
         "abs",
         "both",
-    ), "energies_mode for matrix interpolation must be 'emi', 'abs' or 'both'!"
+    ), "energies_mode for the matrix matching must be 'emi', 'abs' or 'both'!"
 
     if energies_mode == "emi":
         return energies_emi
@@ -505,7 +505,7 @@ def final_energies_for_matching_2sim(energies_emi, energies_abs, energies_mode):
 
 
 def match_matrix_elements_2sim(
-    energies_final, energies_emi, energies_abs, emi_elements, abs_elements
+    energies_final, energies_emi, energies_abs, emi_elements, abs_elements, match_mode
 ):
     """
     Matches absoprtion and emission matrix elements in the case of 2 simulations.
@@ -516,13 +516,50 @@ def match_matrix_elements_2sim(
     energies_abs - array of energies for absorption path
     emi_elements - unmatched elements for emission path
     abs_elements - unmatched elements for absorption path
+    match_mode - the mode of matching.
+                 Possible options:
+                 "interp_both" - interpolate both abs and emi paths for the final energies (default).
+                 "lin_extrap_emi" - linearly extrapolate the emi path and interpolate the abs path
+                                    for the final energies.
+                 "lin_extrap_emi_left" - linearly extrapolate the emi path to the left using the
+                                         first two points and interpolate the abs path for the final
+                                         energies.
+
+
 
     Returns:
     emi_elements_matched - matched emission matrix elements
     abs_elements_matched - matched absorption matrix elements
     """
-    emi_elements_matched = np.interp(energies_final, energies_emi, emi_elements)
-    abs_elements_matched = np.interp(energies_final, energies_abs, abs_elements)
+
+    match_mode_options = (
+        "interp_both",
+        "lin_extrap_emi",
+        "lin_extrap_emi_left",
+    )
+    assert (
+        match_mode in match_mode_options
+    ), f"match_mode for the matrix matching must be in {match_mode_options}!"
+
+    if match_mode == "interp_both":
+        emi_elements_matched = np.interp(energies_final, energies_emi, emi_elements)
+        abs_elements_matched = np.interp(energies_final, energies_abs, abs_elements)
+
+    elif match_mode == "lin_extrap_emi":
+        # linear extrapolation for the emission path
+        fit = np.polyfit(energies_emi, emi_elements, 1)  # fitting coefficients
+        emi_elements_matched = fit[0] * energies_final + fit[1]
+        # interpolation for the absorption path
+        abs_elements_matched = np.interp(energies_final, energies_abs, abs_elements)
+
+    elif match_mode == "lin_extrap_emi_left":
+        # linearly extrapolate emi to the left, using emi = k * energies + b
+        # since extrapolating to the left, k and b are derived using the first two points
+        k = (emi_elements[1] - emi_elements[0]) / (energies_emi[1] - energies_emi[0])
+        b = emi_elements[0] - k * energies_emi[0]
+        emi_elements_matched = k * energies_final + b
+        # interpolation for the absorption path
+        abs_elements_matched = np.interp(energies_final, energies_abs, abs_elements)
 
     return emi_elements_matched, abs_elements_matched
 
@@ -536,3 +573,35 @@ def assert_abs_or_emi(abs_or_emi):
         "abs",
         "emi",
     ), "abs_or_emi parameter can only be 'abs' or 'emi'!"
+
+
+def get_q_res(M, E_res, E_0, width_res):
+    """
+    Computes Fano shape parameter q for the given resonance.
+
+    Args:
+        M - complex matrix element (right eigenvector) corresponding to the resonance.
+            The matrix element is typically located in the "diag_matrix_elements_Jtot1.dat" file
+            and corresponds to the last two elements (right eigenvector).
+        E_res - resonance position.
+        E_0 - ground state energy.
+        width_res - width of the resonance.
+        NOTE: E_res, E_0, width_res must be in the same units!
+
+    Returns:
+        q - the value of the Fano shape parameter.
+    """
+
+    M_squar = M * M
+    R = np.real(M_squar)
+    I = np.imag(M_squar)
+    b = ((E_res - E_0) / (width_res / 2) * R / I + 1) / (
+        R / I - (E_res - E_0) / (width_res / 2)
+    )
+
+    if np.sign(I) > 0:
+        q = b - np.sqrt(b**2 + 1)
+    else:
+        q = b + np.sqrt(b**2 + 1)
+
+    return q

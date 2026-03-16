@@ -126,6 +126,7 @@ def get_integrated_atomic_delay(
     two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Computes integrated atomic delay. Can compute for 1 or 2 simulations.
@@ -145,6 +146,7 @@ def get_integrated_atomic_delay(
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -159,6 +161,7 @@ def get_integrated_atomic_delay(
         two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
@@ -179,6 +182,7 @@ def get_integrated_atomic_phase(
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
+    match_mode="interp_both",
 ):
     """
     Computes integrated atomic phase from integrated atomic delay. Can compute for 1 or 2
@@ -199,6 +203,7 @@ def get_integrated_atomic_phase(
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
     unwrap - if to unwrap phase using np.unwrap
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -213,6 +218,7 @@ def get_integrated_atomic_phase(
         two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
@@ -234,6 +240,7 @@ def get_angular_atomic_delay(
     two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Computes angular part of atomic delay. Can compute for 1 or 2 simulations.
@@ -254,6 +261,7 @@ def get_angular_atomic_delay(
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -268,6 +276,7 @@ def get_angular_atomic_delay(
         two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
@@ -289,6 +298,7 @@ def get_angular_atomic_phase(
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
+    match_mode="interp_both",
 ):
     """
     Computes angluar part of atomic phase from the angular part of atomic delay.
@@ -311,6 +321,7 @@ def get_angular_atomic_phase(
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
     unwrap - if to unwrap phase using np.unwrap
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -326,6 +337,7 @@ def get_angular_atomic_phase(
         two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
@@ -348,6 +360,7 @@ def get_atomic_delay(
     two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Computes total atomic delay: integrated + angular part. Can compute for 1 or 2 simulations.
@@ -368,6 +381,7 @@ def get_atomic_delay(
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -382,6 +396,7 @@ def get_atomic_delay(
         two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)
@@ -414,6 +429,7 @@ def get_atomic_phase(
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
+    match_mode="interp_both",
 ):
     """
     Computes total atomic phase: integrated + angular part from total atomic delay.
@@ -433,6 +449,7 @@ def get_atomic_phase(
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
     unwrap - if to unwrap phase using np.unwrap
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -448,6 +465,7 @@ def get_atomic_phase(
         two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(two_photons_1, two_photons_2=two_photons_2)

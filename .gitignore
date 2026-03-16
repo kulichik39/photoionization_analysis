@@ -146,3 +146,9 @@ analysis/
 
 # folder with plots
 plots/
+
+# folders with the papers, thesis etc
+master_thesis_results/
+radon_xenon_paper/
+two_photon_integration/output_Leon/
+two_photon_integration/outputRa/

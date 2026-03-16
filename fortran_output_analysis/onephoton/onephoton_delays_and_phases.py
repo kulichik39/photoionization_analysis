@@ -108,6 +108,7 @@ def get_integrated_wigner_delay(
     g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Computes integrated Wigner delay. Can compute for 1 or 2 simulations.
@@ -129,6 +130,7 @@ def get_integrated_wigner_delay(
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
+    match_mode -  Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -145,6 +147,7 @@ def get_integrated_wigner_delay(
         g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
@@ -167,6 +170,7 @@ def get_integrated_wigner_phase(
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
+    match_mode="interp_both",
 ):
     """
     Computes integrated wigner phase from integrated wigner delay. Can compute for 1 or 2
@@ -189,6 +193,7 @@ def get_integrated_wigner_phase(
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
     unwrap - if to unwrap phase using np.unwrap
+    match_mode -  Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -205,6 +210,7 @@ def get_integrated_wigner_phase(
         g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
@@ -228,6 +234,7 @@ def get_angular_wigner_delay(
     g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Computes angular part of Wigner delay. Can compute for 1 or 2 simulations.
@@ -250,6 +257,7 @@ def get_angular_wigner_delay(
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
+    match_mode -  Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -266,6 +274,7 @@ def get_angular_wigner_delay(
         g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
@@ -289,6 +298,7 @@ def get_angular_wigner_phase(
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
+    match_mode="interp_both",
 ):
     """
     Computes angluar part of Wigner phase from the angular part of Wigner delay.
@@ -313,6 +323,7 @@ def get_angular_wigner_phase(
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
     unwrap - if to unwrap phase using np.unwrap
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -330,6 +341,7 @@ def get_angular_wigner_phase(
         g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
@@ -354,6 +366,7 @@ def get_wigner_delay(
     g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Computes total Wigner delay: integrated + angular part. Can compute for 1 or 2 simulations.
@@ -376,6 +389,7 @@ def get_wigner_delay(
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -392,6 +406,7 @@ def get_wigner_delay(
         g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)
@@ -426,6 +441,7 @@ def get_wigner_phase(
     steps_per_IR_photon=None,
     energies_mode="both",
     unwrap=True,
+    match_mode="interp_both",
 ):
     """
     Computes total Wigner phase: integrated + angular part from total Wigner delay.
@@ -447,6 +463,7 @@ def get_wigner_phase(
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
     unwrap - if to unwrap phase using np.unwrap
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -464,6 +481,7 @@ def get_wigner_phase(
         g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     omega_diff = compute_omega_diff(g_omega_IR_1, g_omega_IR_2=g_omega_IR_2)

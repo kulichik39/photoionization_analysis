@@ -166,6 +166,7 @@ def get_complex_asymmetry_parameter(
     g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Computes complex asymmetry parameter. Can compute for 1 or 2 simulations.
@@ -187,6 +188,7 @@ def get_complex_asymmetry_parameter(
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
 
     Returns:
@@ -204,6 +206,7 @@ def get_complex_asymmetry_parameter(
         g_omega_IR_2=g_omega_IR_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     b2_complex, _ = one_photon_asymmetry_parameter(

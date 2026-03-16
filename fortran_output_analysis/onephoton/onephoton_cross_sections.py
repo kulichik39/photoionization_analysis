@@ -451,6 +451,6 @@ def get_total_cross_section_for_hole(
     )
 
     for i in range(N_angles):
-        total_cs[i, :] = integrated_part * angular_part[i, :]
+        total_cs[i, :] = integrated_part / (4 * np.pi) * angular_part[i, :]
 
     return ekin_eV, total_cs

@@ -181,6 +181,7 @@ def get_complex_asymmetry_parameter(
     two_photons_2: Optional[TwoPhotons] = None,
     steps_per_IR_photon=None,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Computes complex asymmetry parameter in the two photons case. Can compute for 1 or 2
@@ -201,7 +202,7 @@ def get_complex_asymmetry_parameter(
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
-
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
 
     Returns:
     ekin_eV - array of photoelectron kinetic energies in eV
@@ -216,6 +217,7 @@ def get_complex_asymmetry_parameter(
         two_photons_2=two_photons_2,
         steps_per_IR_photon=steps_per_IR_photon,
         energies_mode=energies_mode,
+        match_mode=match_mode,
     )
 
     b_complex, _ = two_photons_asymmetry_parameter(

@@ -340,6 +340,7 @@ def prepare_absorption_and_emission_matrices_2sim(
     g_omega_IR_emi,
     g_omega_IR_abs,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Works with the case of 2 simulations (requires 2 OnePhoton objects).
@@ -357,6 +358,7 @@ def prepare_absorption_and_emission_matrices_2sim(
     energies_mode - tells which energies we take for matrices interpolation. Possible options:
     "emi" - energies from emission object, "abs" - energies from absorption object, "both" -
     combined array from both emission and absorption objects.
+    match_mode - the mode of matching.
 
     Returns:
     ekin_final - array of final phototelctron kinetic energies in eV
@@ -379,7 +381,12 @@ def prepare_absorption_and_emission_matrices_2sim(
 
     ekin_final, M_emi_matched, M_abs_matched = (
         match_absorption_and_emission_matrices_2sim(
-            ekin_eV_emi, ekin_eV_abs, M_emi, M_abs, energies_mode=energies_mode
+            ekin_eV_emi,
+            ekin_eV_abs,
+            M_emi,
+            M_abs,
+            energies_mode=energies_mode,
+            match_mode=match_mode,
         )
     )
 
@@ -392,6 +399,7 @@ def match_absorption_and_emission_matrices_2sim(
     M_emi,
     M_abs,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Matches absorpiton and emission matrices so that their indices correspond to the same final
@@ -405,6 +413,7 @@ def match_absorption_and_emission_matrices_2sim(
     energies_mode - tells which energies we take for matrices interpolation. Possible options:
     "emi" - energies from emission object, "abs" - energies from absorption object, "both" -
     combined array from both emission and absorption objects.
+    match_mode - the mode of matching.
 
     Returns:
     energies_final - the array of final phototelctron energies
@@ -431,7 +440,12 @@ def match_absorption_and_emission_matrices_2sim(
     )
     for i in range(M_abs.shape[0]):
         M_emi_matched[i, :], M_abs_matched[i, :] = match_matrix_elements_2sim(
-            energies_final, energies_emi, energies_abs, M_emi[i, :], M_abs[i, :]
+            energies_final,
+            energies_emi,
+            energies_abs,
+            M_emi[i, :],
+            M_abs[i, :],
+            match_mode,
         )
 
     return energies_final, M_emi_matched, M_abs_matched
@@ -447,6 +461,7 @@ def get_prepared_matrices(
     g_omega_IR_2=None,
     steps_per_IR_photon=None,
     energies_mode="both",
+    match_mode="interp_both",
 ):
     """
     Returns prepared emission and absorption matrices as well as energy vector
@@ -466,6 +481,7 @@ def get_prepared_matrices(
     energies_mode - Required for 2 simulations only. Tells which energies we take for matrices
     interpolation. Possible options: "emi" - energies from emission object, "abs" - energies
     from absorption object, "both" - combined array from both emission and absorption objects.
+    match_mode - Required for 2 simulations only. Specifies the mode of matching.
     NOTE: if two simulations were provided, then the first one corresponds to emission path and
     the second one to absorption path
 
@@ -492,6 +508,7 @@ def get_prepared_matrices(
                 g_omega_IR_1,
                 g_omega_IR_2,
                 energies_mode=energies_mode,
+                match_mode=match_mode,
             )
         )
     else:  # if the second simulation is not provided
