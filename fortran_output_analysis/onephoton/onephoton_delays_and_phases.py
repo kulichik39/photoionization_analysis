@@ -137,6 +137,9 @@ def get_integrated_wigner_delay(
     tau_int_wigner - values of the integrated Wigner delay
     """
 
+    # TODO: add unwrapping option for the delay. Maybe change the logic of the delay calculation:
+    # calculated it from the phase.
+
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
         one_photon_1,
         n_qn,
@@ -263,6 +266,9 @@ def get_angular_wigner_delay(
     ekin_eV - array of photoelectron kinetic energies in eV
     tau_ang_wigner - values of the angular part of Wigner delay for specified angles
     """
+
+    # TODO: add unwrapping option for the delay. Maybe change the logic of the delay calculation:
+    # calculated it from the phase.
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
         one_photon_1,
@@ -395,6 +401,8 @@ def get_wigner_delay(
     ekin_eV - array of photoelectron kinetic energies in eV
     tau_wigner - array with total Wigner delays for specified angles
     """
+    # TODO: add unwrapping option for the delay. Maybe change the logic of the delay calculation:
+    # calculated it from the phase.
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
         one_photon_1,

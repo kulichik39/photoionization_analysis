@@ -184,7 +184,7 @@ def get_complex_q_angular(
     resonance when the angular dependence is included.
 
     Args:
-        angle - value of the angle for which we estimate complex q
+        angle - emission angle
         A_bg_int, A_0_int - coefficients for the integrated case
         A_bg_b2, A_0_b2 - coefficients for the beta parameter of order 2
         A_bg_b4, A_0_b4 - coefficients for the beta parameter of order 4 (NOTE: put them to zero if
@@ -216,7 +216,7 @@ def get_background_contribution_angular(
     describing intensity (amplitude) near a resonance when the angular dependence is included.
 
     Args:
-        angle - value of the angle for which we estimate complex q
+        angle - emission angle
         abs_or_emi - tells if the resonance was in absorption or emission path, must be
         "abs" or "emi" string
         A_bg_int, A_0_int - coefficients for the integrated case
@@ -429,7 +429,7 @@ def get_model_pred_for_integrated(abs_or_emi, eps, A_bg, A_0, q_complex):
         q_complex - complex q parameter for the integrated intensity.
 
     Returns:
-        model prediction of the integrated intensity.
+        model prediction for the integrated intensity.
     """
 
     assert_abs_or_emi(abs_or_emi)
@@ -464,11 +464,11 @@ def get_model_pred_for_beta_param(
         eps - array with the reduced energy values.
         A_bg_beta, A_0_beta - coefficients for the beta parameter.
         q_complex_beta - complex q for the beta parameter.
-        A_bg_int, A_0_int - coefficients for the integrated instensity (signal).
+        A_bg_int, A_0_int - coefficients for the integrated intensity (signal).
         q_complex_int - complex q for the integrated intensity.
 
     Returns:
-        model prediction of the beta parameter.
+        model prediction for the beta parameter.
     """
 
     assert_abs_or_emi(abs_or_emi)
@@ -483,6 +483,56 @@ def get_model_pred_for_beta_param(
         model_pred = np.conjugate(model_pred)
 
     return model_pred
+
+
+def get_model_pred_for_angular(
+    abs_or_emi,
+    eps,
+    angle,
+    A_bg_int,
+    A_0_int,
+    A_bg_b2,
+    A_0_b2,
+    A_bg_b4,
+    A_0_b4,
+    q_complex_ang,
+):
+    """
+    Calculates model prediction for the angularly resolved intensity (signal).
+
+    Args:
+        abs_or_emi - tells if the resonance was in absorption or emission path, must be
+        "abs" or "emi" string.
+        eps - array with the reduced energy values.
+        angle - emission angle.
+        A_bg_int, A_0_int - coefficients for the integrated intensity (signal).
+        A_bg_b2, A_0_b2 - coefficients for the second order beta parameter.
+        A_bg_b4, A_0_b4 - coefficients for the fourth order beta parameter.
+        q_complex_ang - complex q parameter for the emission angle.
+
+    Returns:
+        model prediction for the angularly resolved intensity.
+    """
+
+    assert_abs_or_emi(abs_or_emi)
+
+    background_contr = get_background_contribution_angular(
+        angle,
+        abs_or_emi,
+        A_bg_int,
+        A_0_int,
+        A_bg_b2,
+        A_0_b2,
+        A_bg_b4,
+        A_0_b4,
+    )
+
+    energy_contr = (eps + q_complex_ang) / (eps + 1j)
+
+    if abs_or_emi == "abs":
+        energy_contr = np.conjugate(energy_contr)
+
+    return energy_contr * background_contr
 
 
 def get_crit_angles(
@@ -502,7 +552,7 @@ def get_crit_angles(
     Args:
         angles - array of angles to search in.
         q - Fano shape parameter.
-        A_bg_int, A_0_int - coefficients for the integrated instensity (signal).
+        A_bg_int, A_0_int - coefficients for the integrated intensity (signal).
         A_bg_b2, A_0_b2 - coefficients for the second order beta parameter.
         A_bg_b4, A_0_b4 - coefficients for the fourth order beta parameter.
                           NOTE: A_bg_b4 and A_0_b4 are zero for the Wigner case.

@@ -153,6 +153,9 @@ def get_integrated_atomic_delay(
     tau_int_atomic - values of the integrated atomic delay
     """
 
+    # TODO: add unwrapping option for the delay. Maybe change the logic of the delay calculation:
+    # calculated it from the phase.
+
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
         two_photons_1,
         n_qn,
@@ -267,6 +270,9 @@ def get_angular_atomic_delay(
     ekin_eV - array of photoelectron kinetic energies in eV
     tau_ang_atomic - values of the angular part of atomic delay for specified angles
     """
+
+    # TODO: add unwrapping option for the delay. Maybe change the logic of the delay calculation:
+    # calculated it from the phase.
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
         two_photons_1,
@@ -387,6 +393,9 @@ def get_atomic_delay(
     ekin_eV - array of photoelectron kinetic energies in eV
     tau_atomic - array with total atomic delays for specified angles
     """
+
+    # TODO: add unwrapping option for the delay. Maybe change the logic of the delay calculation:
+    # calculated it from the phase.
 
     ekin_eV, M_emi_matched, M_abs_matched = get_prepared_matrices(
         two_photons_1,
