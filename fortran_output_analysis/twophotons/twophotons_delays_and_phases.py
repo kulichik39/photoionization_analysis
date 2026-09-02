@@ -6,9 +6,9 @@ from scipy.special import legendre
 from fortran_output_analysis.constants_and_parameters import (
     g_inverse_atomic_frequency_to_attoseconds,
 )
+from fortran_output_analysis.global_utility import unwrap_phase_with_nans
 from fortran_output_analysis.common_utility import (
     delay_to_phase,
-    unwrap_phase_with_nans,
     exported_mathematica_tensor_to_python_list,
 )
 from fortran_output_analysis.twophotons.twophotons import TwoPhotons

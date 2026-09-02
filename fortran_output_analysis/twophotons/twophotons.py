@@ -5,7 +5,6 @@ from itertools import islice  # Slicing when reading lines from Fortran files.
 
 from fortran_output_analysis.common_utility import (
     l_from_kappa,
-    l_to_str,
     j_from_kappa,
     j_from_kappa_int,
     Hole,
@@ -13,6 +12,7 @@ from fortran_output_analysis.common_utility import (
     construct_hole_name,
     assert_abs_or_emi,
 )
+from fortran_output_analysis.global_utility import l_to_str
 
 from fortran_output_analysis.onephoton.onephoton import final_kappas as final_kappas_1ph
 
@@ -727,15 +727,14 @@ class TwoPhotons:
 
 def final_kappas(hole_kappa, only_reachable=True):
     """
-    Returns a list of the kappa quantum numbers that are reachable with
-    two photons from the state with the given hole kappa.
-    If only_reachable is set to true the function will only return kappa
-    values that can be reached from the hole kappa, otherwise it will
-    always return the five 'theoretically possible' channels.
+    If only_reachable is True, returns final kappas that can be reached with two photons
+    from an initial state specified by hole_kappa. If only_reachable is False, always returns a list
+    of five elements in a specific order, where some of the values may correspond to theoretically
+    forbidden channels.
 
     Params:
     hole_kappa - kappa value of the hole
-    only_reachable - tells if only permitted states should be returned
+    only_reachable - tells if only allowed final states should be returned
 
     Returns:
     kappas - list with kappa values of possible final states

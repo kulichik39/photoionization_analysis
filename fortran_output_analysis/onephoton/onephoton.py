@@ -7,9 +7,10 @@ from fortran_output_analysis.common_utility import (
     j_from_kappa_int,
     Hole,
     load_raw_data,
-    l_to_str,
     construct_hole_name,
 )
+
+from fortran_output_analysis.global_utility import l_to_str
 
 
 class IonisationPath:
@@ -21,8 +22,7 @@ class IonisationPath:
         """
         Params:
         kappa - kappa value of the final state
-        col_idx - index of the column in the raw data files corresponding to this
-        final state
+        col_idx - index of the column in the data corresponding to this ionization path.
         """
         self.kappa = kappa
         self.l = l_from_kappa(kappa)
@@ -33,13 +33,14 @@ class IonisationPath:
 
 def final_kappas(hole_kappa, only_reachable=True):
     """
-    Returns the possible final kappas that can be reached with one photon from
-    an initial state with the given kappa. If only_reachable is False, this function
-    will always return a list of three elements, even if one of them is 0.
+    If only_reachable is True, returns final kappas that can be reached with one photon
+    from an initial state specified by hole_kappa. If only_reachable is False, always returns a list
+    of three elements in a specific order, where some of the values may correspond to theoretically
+    forbidden channels.
 
     Params:
     hole_kappa - kappa value of the hole
-    only_reachable - tells if only permitted states should be returned
+    only_reachable - tells if only allowed final states should be returned
 
     Returns:
     kappas - list with kappa values of possible final states
@@ -203,6 +204,10 @@ class Channels:
         column_index = ionisation_path.column_index
 
         return self.__raw_amp_data[:, column_index]
+
+    def return_amp_data(self):
+
+        return self.__raw_amp_data
 
     def get_raw_phaseF_data(self, final_kappa):
         """
@@ -420,7 +425,7 @@ class OnePhoton:
         loaded
         """
 
-        is_loaded = self.is_hole_loaded(hole_kappa, n_qn)
+        is_loaded = self.is_hole_loaded(n_qn, hole_kappa)
 
         if not is_loaded or should_reload:
             hole = Hole(

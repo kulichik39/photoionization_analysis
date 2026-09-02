@@ -272,7 +272,7 @@ def get_integrated_photoelectron_emission_cross_section(
 
     assert (
         N_holes > 0
-    ), f"No holes are loaded in {one_photon.name}. Please, load at least one hole!"
+    ), f"No holes are loaded in {one_photon.atom_name}. Please, load at least one hole!"
 
     first_hole = all_channels[0].get_hole_object()
 

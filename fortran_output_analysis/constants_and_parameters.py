@@ -20,3 +20,4 @@ g_linestyles = ["solid", "dotted", "dashdot", "dashed", (0, (3, 1, 1, 1, 1, 1))]
 # Conversion constants
 g_inverse_atomic_frequency_to_attoseconds = 1e18 * 2.4188843265e-17
 fine_structure = 1 / 137
+au_to_Mbarn = 5.29177210903**2

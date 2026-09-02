@@ -15,6 +15,7 @@ from fortran_output_analysis.constants_and_parameters import (
     g_inverse_atomic_frequency_to_attoseconds,
     fine_structure,
 )
+from fortran_output_analysis.global_utility import l_to_str
 
 
 # ==================================================================================================
@@ -263,27 +264,6 @@ def l_from_str(l_str):
         return l
 
 
-def l_to_str(l):
-    if l == 0:
-        return "s"
-    elif l == 1:
-        return "p"
-    elif l == 2:
-        return "d"
-    elif l == 3:
-        return "f"
-    elif l == 4:
-        return "g"
-    elif l == 5:
-        return "h"
-    else:
-        raise ValueError(
-            "l_to_str(): invalid or unimplemented string for l quantum number."
-            "Function was given l =",
-            l,
-        )
-
-
 # ==================================================================================================
 #
 # ==================================================================================================
@@ -426,16 +406,6 @@ def delay_to_phase(delay, omega_diff):
     return delay * omega_diff / g_inverse_atomic_frequency_to_attoseconds
 
 
-def unwrap_phase_with_nans(phase):
-    """Unwraps a phase that contains NaN values by masking out the NaNs."""
-
-    # np.unwrap can not handle NaNs, mask them out.
-    nanmask = np.logical_not(np.isnan(phase))
-    phase[nanmask] = np.unwrap(phase[nanmask])
-
-    return phase
-
-
 def final_energies_for_matching_1sim(energies, steps_per_IR_photon):
     """
     Prepares an array of final energies to match absorption and emission matrices
@@ -472,98 +442,6 @@ def match_matrix_elements_1sim(emi_elements, abs_elements, steps_per_IR_photon):
     )
 
 
-def final_energies_for_matching_2sim(energies_emi, energies_abs, energies_mode):
-    """
-    Prepares an array of final energies to match absorption and emission matrices
-    in the case of 2 simulations.
-
-    Params:
-    energies_emi - array of energies for emission path
-    energies_abs - array of energies for absorption path
-    energies_mode - tells which energies we take for matrices interpolation. Possible options:
-    "emi" - energies from emission object, "abs" - energies from absorption object, "both" -
-    combined array from both emission and absorption objects.
-
-    Returns:
-    array of final energies for matching
-    """
-
-    assert energies_mode in (
-        "emi",
-        "abs",
-        "both",
-    ), "energies_mode for the matrix matching must be 'emi', 'abs' or 'both'!"
-
-    if energies_mode == "emi":
-        return energies_emi
-    elif energies_mode == "abs":
-        return energies_abs
-    else:
-        energies_concat = np.concatenate((energies_abs, energies_emi))
-        energies_final = np.sort(np.unique(energies_concat))
-        return energies_final
-
-
-def match_matrix_elements_2sim(
-    energies_final, energies_emi, energies_abs, emi_elements, abs_elements, match_mode
-):
-    """
-    Matches absoprtion and emission matrix elements in the case of 2 simulations.
-
-    Params:
-    energies_final - array of final photoelectron energies
-    energies_emi - array of energies for emission path
-    energies_abs - array of energies for absorption path
-    emi_elements - unmatched elements for emission path
-    abs_elements - unmatched elements for absorption path
-    match_mode - the mode of matching.
-                 Possible options:
-                 "interp_both" - interpolate both abs and emi paths for the final energies (default).
-                 "lin_extrap_emi" - linearly extrapolate the emi path and interpolate the abs path
-                                    for the final energies.
-                 "lin_extrap_emi_left" - linearly extrapolate the emi path to the left using the
-                                         first two points and interpolate the abs path for the final
-                                         energies.
-
-
-
-    Returns:
-    emi_elements_matched - matched emission matrix elements
-    abs_elements_matched - matched absorption matrix elements
-    """
-
-    match_mode_options = (
-        "interp_both",
-        "lin_extrap_emi",
-        "lin_extrap_emi_left",
-    )
-    assert (
-        match_mode in match_mode_options
-    ), f"match_mode for the matrix matching must be in {match_mode_options}!"
-
-    if match_mode == "interp_both":
-        emi_elements_matched = np.interp(energies_final, energies_emi, emi_elements)
-        abs_elements_matched = np.interp(energies_final, energies_abs, abs_elements)
-
-    elif match_mode == "lin_extrap_emi":
-        # linear extrapolation for the emission path
-        fit = np.polyfit(energies_emi, emi_elements, 1)  # fitting coefficients
-        emi_elements_matched = fit[0] * energies_final + fit[1]
-        # interpolation for the absorption path
-        abs_elements_matched = np.interp(energies_final, energies_abs, abs_elements)
-
-    elif match_mode == "lin_extrap_emi_left":
-        # linearly extrapolate emi to the left, using emi = k * energies + b
-        # since extrapolating to the left, k and b are derived using the first two points
-        k = (emi_elements[1] - emi_elements[0]) / (energies_emi[1] - energies_emi[0])
-        b = emi_elements[0] - k * energies_emi[0]
-        emi_elements_matched = k * energies_final + b
-        # interpolation for the absorption path
-        abs_elements_matched = np.interp(energies_final, energies_abs, abs_elements)
-
-    return emi_elements_matched, abs_elements_matched
-
-
 def assert_abs_or_emi(abs_or_emi):
     """
     Asserts that abs_or_emi parameter takes only "abs" or "emi" values.
@@ -582,7 +460,7 @@ def get_q_res(M, E_res, E_0, width_res):
     Args:
         M - complex matrix element (right eigenvector) corresponding to the resonance.
             The matrix element is typically located in the "diag_matrix_elements_Jtot1.dat" file
-            and corresponds to the last two elements (right eigenvector).
+            and corresponds to the last two numbers (right eigenvector).
         E_res - resonance position.
         E_0 - ground state energy.
         width_res - width of the resonance.

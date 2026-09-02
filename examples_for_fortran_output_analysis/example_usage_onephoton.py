@@ -28,7 +28,6 @@ from fortran_output_analysis.onephoton.onephoton import Channels
 # we also import some physical constants required for the analysis
 from fortran_output_analysis.constants_and_parameters import g_eV_per_Hartree
 
-
 # ============== Initialization with OnePhoton ==============
 """
 The main purpose of the OnePhoton class is to initialize the atom, the holes we want to 

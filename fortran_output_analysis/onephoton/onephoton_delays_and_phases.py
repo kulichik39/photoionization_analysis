@@ -6,9 +6,12 @@ from scipy.special import legendre
 from fortran_output_analysis.constants_and_parameters import (
     g_inverse_atomic_frequency_to_attoseconds,
 )
+from fortran_output_analysis.global_utility import (
+    unwrap_phase_with_nans,
+    compute_omega_diff,
+)
 from fortran_output_analysis.common_utility import (
     delay_to_phase,
-    unwrap_phase_with_nans,
     exported_mathematica_tensor_to_python_list,
 )
 from fortran_output_analysis.onephoton.onephoton import OnePhoton
@@ -21,26 +24,6 @@ from fortran_output_analysis.onephoton.onephoton_asymmetry_parameters import (
 This namespace contains functions for analyzing delays and phases based on the data from 
 the OnePhoton object.
 """
-
-
-def compute_omega_diff(g_omega_IR_1, g_omega_IR_2=None):
-    """
-    Computes energy difference between absorption and emission paths.
-    Can compute for 1 or 2 simulations.
-
-    Params:
-    g_omega_IR_1 - energy of the IR photon in Hartree in the first simulation
-    g_omega_IR_2 - energy of the IR photon in Hartree in the second simulation
-
-    Returns:
-    omega_diff - energy difference between absorption and emission paths
-    """
-    if g_omega_IR_2:  # if two simulations are provided
-        omega_diff = g_omega_IR_1 + g_omega_IR_2
-    else:  # if only one simulation is provided
-        omega_diff = 2.0 * g_omega_IR_1
-
-    return omega_diff
 
 
 def get_wigner_intensity(
