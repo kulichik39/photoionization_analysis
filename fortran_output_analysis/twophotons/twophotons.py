@@ -10,9 +10,8 @@ from fortran_output_analysis.common_utility import (
     Hole,
     load_raw_data,
     construct_hole_name,
-    assert_abs_or_emi,
 )
-from fortran_output_analysis.global_utility import l_to_str
+from fortran_output_analysis.global_utility import l_to_str, assert_abs_or_emi
 
 from fortran_output_analysis.onephoton.onephoton import final_kappas as final_kappas_1ph
 
@@ -729,8 +728,8 @@ def final_kappas(hole_kappa, only_reachable=True):
     """
     If only_reachable is True, returns final kappas that can be reached with two photons
     from an initial state specified by hole_kappa. If only_reachable is False, always returns a list
-    of five elements in a specific order, where some of the values may correspond to theoretically
-    forbidden channels.
+    of five elements in a specific order, where some of the values may correspond to non-existing
+    channels. This option is needed to set the data dimensionality.
 
     Params:
     hole_kappa - kappa value of the hole

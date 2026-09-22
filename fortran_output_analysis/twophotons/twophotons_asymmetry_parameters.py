@@ -1,9 +1,9 @@
 import numpy as np
 import os
 from typing import Optional
+from fortran_output_analysis.global_utility import assert_abs_or_emi
 from fortran_output_analysis.common_utility import (
     exported_mathematica_tensor_to_python_list,
-    assert_abs_or_emi,
 )
 from fortran_output_analysis.twophotons.twophotons import TwoPhotons
 from fortran_output_analysis.twophotons.twophotons_utilities import (

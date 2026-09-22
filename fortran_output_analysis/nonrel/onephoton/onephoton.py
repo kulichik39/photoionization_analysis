@@ -1,4 +1,3 @@
-import os
 import numpy as np
 
 from fortran_output_analysis.global_utility import l_to_str, l_to_int
@@ -21,14 +20,16 @@ things a little clearer.
 
 def final_ls(hole_l: int, only_reachable: bool = True) -> list[int]:
     """
-    If only_reachable is True, returns final angular momenta that can be reached with one photon
-    from an initial state specified by hole_l. If only_reachable is False, always returns a list
-    of two elements in a specific order ([hole_l - 1, hole_l + 1]), where one of the values may
-    correspond to a theoretically forbidden channel (e.g. l=-1 for the s hole).
+    If only_reachable is True, returns final angular momenta that, assuming dipole approximation,
+    can be reached with one photon from an initial state specified by hole_l.
+    If only_reachable is False, always returns a list of two elements in a specific order
+    ([hole_l - 1, hole_l + 1]), where one of the values may correspond to a non-existing channel
+    (e.g. l=-1 for the s hole).
+
 
     Args:
         hole_l - angular momentum of the hole.
-        only_reachable - tells if only allowed final states should be returned.
+        only_reachable - tells if only dipole allowed final states should be returned.
 
     Returns:
         l_final - list of final angular momenta.
@@ -70,7 +71,7 @@ class Channels:
     def __init__(
         self,
         hole: Hole,
-        data_files: dict[int | str, str],
+        data_files: dict[int | str, dict[str, str]],
         bp_index: int,
     ) -> None:
         """
@@ -89,14 +90,17 @@ class Channels:
         self._set_ionisation_data(data_files, bp_index)
 
     def _set_ionisation_data(
-        self, data_files: dict[int | str, str], bp_index: int
+        self, data_files: dict[int | str, dict[str, str]], bp_index: int
     ) -> None:
         """
         Sets up reachable ionisation channels and saves relevant data in the attributes.
-        NOTE: the cs, amplitude and phase arrays have a fixed number of rows (2) regardless of
-        the number of reachable final states. This is needed for: 1) Calculation of the beta
-        parameters, which requires a specific order of the final states (rows) and the
-        coefficients for those states. 2) Maintain similarity with the older relativistic code.
+
+        NOTE: The first dimension of the cs, amplitude, and phase arrays is fixed at the maximum
+        number of final l values returned by final_ls(), regardless of the actual number of
+        dipole-allowed (reachable) final states. This fixed structure is required to:
+        1. Calculate the beta parameters, which rely on a specific ordering of
+        the final states and their corresponding coefficients.
+        2. Maintain consistency with the older relativistic code.
 
         Args:
             data_files - a dictionary mapping ionisation channels to the corresponding data files.
@@ -104,12 +108,8 @@ class Channels:
         """
         hole_l = self.hole.l
 
-        all_final_l = final_ls(hole_l, only_reachable=False)  # list of ALL final states
-        N_l = len(all_final_l)
-
-        reachable_final_l = final_ls(
-            hole_l, only_reachable=True
-        )  # list of reachable final states
+        all_final_l = final_ls(hole_l, only_reachable=False)
+        N_l = len(all_final_l)  # the max. number final states
 
         # load photon energies from the first cross section file that came across
         first_cs_file = next(iter(data_files.values()))["cs"]
@@ -123,25 +123,30 @@ class Channels:
         self._amp_data = np.zeros((N_l, N_omega), dtype=np.float64)
         self._phase_data = np.zeros((N_l, N_omega), dtype=np.float64)
 
-        # get the type of the data_files keys, and transform them into the int format if needed
+        # get the type of the angular momenta in the data_files keys (int or str), and transform
+        # them into the int format if needed
         type_l_keys = type(next(iter(data_files.keys())))
         if type_l_keys is str:
             data_files = {l_to_int(key): value for key, value in data_files.items()}
 
+        reachable_final_l = final_ls(
+            hole_l, only_reachable=True
+        )  # list of reachable final states
+
         for idx in range(N_l):
-            l = all_final_l[idx]
+            final_l = all_final_l[idx]
 
             # save only the reachable final states
-            if l in reachable_final_l:
+            if final_l in reachable_final_l:
                 try:
-                    files = data_files[l]
+                    files = data_files[final_l]
                 except KeyError:
                     raise KeyError(
-                        f"The {l_to_str(l)} final state is reachable, but was not found in the data files!"
+                        f"The {l_to_str(final_l)} final state is reachable, but was not found in the data files!"
                     ) from None  # "from None" means that the previous exception log will be hidden
 
                 # store the channel's data
-                self._ionisation_channels[l] = IonisationPath(l, idx)
+                self._ionisation_channels[final_l] = IonisationPath(final_l, idx)
                 # cross section
                 cs_file = files["cs"]
                 _, cs = extract_data_from_file(cs_file, bp_index)
@@ -155,9 +160,10 @@ class Channels:
                 _, phase = extract_data_from_file(phase_file, bp_index)
                 self._phase_data[idx] = phase
 
-    def _assert_final_l(self, final_l: int) -> None:
+    def _assert_ionisation_channel(self, final_l: int) -> None:
         """
-        Checks if the given orbital momentum is reachable.
+        Checks if the given ionisation channel, determined by the final angular momentum l,
+        is available.
 
         Args:
             final_l - orbital momentum of the final state.
@@ -173,13 +179,13 @@ class Channels:
             final_l - orbital momentum of the final state, given in the form of int or str.
 
         Returns:
-            an IonisationPath instance for the given orbital momentum.
+            an IonisationPath instance for the specified ionisation channel.
         """
 
         if type(final_l) is str:
             final_l = l_to_int(final_l)
 
-        self._assert_final_l(final_l)
+        self._assert_ionisation_channel(final_l)
 
         return self._ionisation_channels[final_l]
 
@@ -204,15 +210,15 @@ class Channels:
 
         l_to_index = {}
 
-        l_final = final_ls(self.hole.l, only_reachable=True)
+        final_l_reachable = final_ls(self.hole.l, only_reachable=True)
 
-        for l in l_final:
-            ion_channel = self.get_ionisation_channel(l)
+        for final_l in final_l_reachable:
+            ion_channel = self.get_ionisation_channel(final_l)
 
             if out_as == "str":  # turn the dictionary key into the out_as format
-                l_key = l_to_str(l)
+                l_key = l_to_str(final_l)
             else:
-                l_key = l
+                l_key = final_l
 
             l_to_index[l_key] = ion_channel.row_index
 
@@ -295,10 +301,12 @@ class Channels:
 
 class OnePhoton:
     """
-    A central hub for storing/accessing/manipulating one photon data from a simulation, including
-    both general (like eigenstates from diagonalisation) and hole-specific (like amplitude,
-    phase etc.) results. Allows to load and orchestrate the data for several holes. Each hole is
-    attributed to the Channels class handling its data.
+    Provides a central interface for storing, accessing, and manipulating
+    one photon simulation data, including both general (like eigenstates from
+    diagonalisation) and hole-specific (like amplitude, phase etc.) results.
+
+    The class supports multiple holes. Each hole is attributed to an instance of
+    the Channels class, which manages the corresponding data.
     """
 
     def __init__(self, atom_name: str) -> None:
@@ -317,7 +325,7 @@ class OnePhoton:
 
     def load_diag_data(
         self,
-        path_to_data: str,
+        path_to_data: str | None = None,
         path_to_diag_eigenvalues: str | None = None,
         should_reload: bool = False,
     ) -> None:
@@ -396,8 +404,8 @@ class OnePhoton:
         self,
         n_qn: int,
         hole_l: int | str,
-        path_to_data: str,
-        data_files: dict[int | str, str] | None = None,
+        path_to_data: str | None = None,
+        data_files: dict[int | str, dict[str, str]] | None = None,
         bp_index: int = 3,
         should_reload: bool = False,
         binding_energy: float | None = None,
@@ -411,9 +419,26 @@ class OnePhoton:
             n_qn - principal quantum number of the hole.
             hole_l - orbital momentum of the hole.
             path_to_data - path to the output folder with the simulation results.
+
             data_files - a dictionary mapping ionisation channels to the corresponding data files.
                          If not specified, constructed using path_to_data and assuming standard
-                         naming of the output files.
+                         naming of the output files. The structure of the dict is as follows:
+                                                    {
+                                                        final_l_1: {
+                                                                    "cs": cs_file_1,
+                                                                    "amp": amp_file_1,
+                                                                    "phase": phase_file_1
+                                                                    }
+                                                        ,
+                                                        final_l_2: {
+                                                                    "cs": cs_file_2,
+                                                                    "amp": amp_file_2,
+                                                                    "phase": phase_file_2
+                                                                    }
+                                                        ,
+                                                        ...
+                                                    }
+
             bp_index - the breakpoint index, starting with 1.
             should_reload - in case the data was previously loaded, tells if it should be reloaded.
             binding_energy - binding energy for the hole. Allows specifying the predifined value for
@@ -432,7 +457,9 @@ class OnePhoton:
             )  # initialize hole object
 
             if is_loaded:
-                print(f"Reload the {hole.name} hole in {self.atom_name}!")
+                print(
+                    f"Reload the one photon data for the {hole.name} hole in {self.atom_name}!"
+                )
 
             # If the paths to the data files were not specified, construct them assuming the
             # standard naming.

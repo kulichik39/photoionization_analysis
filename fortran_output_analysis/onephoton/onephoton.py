@@ -35,8 +35,8 @@ def final_kappas(hole_kappa, only_reachable=True):
     """
     If only_reachable is True, returns final kappas that can be reached with one photon
     from an initial state specified by hole_kappa. If only_reachable is False, always returns a list
-    of three elements in a specific order, where some of the values may correspond to theoretically
-    forbidden channels.
+    of three elements in a specific order, where some of the values may correspond to non-existing
+    channels. This option is needed to set the data dimensionality.
 
     Params:
     hole_kappa - kappa value of the hole

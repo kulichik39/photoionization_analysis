@@ -442,17 +442,6 @@ def match_matrix_elements_1sim(emi_elements, abs_elements, steps_per_IR_photon):
     )
 
 
-def assert_abs_or_emi(abs_or_emi):
-    """
-    Asserts that abs_or_emi parameter takes only "abs" or "emi" values.
-    """
-
-    assert abs_or_emi in (
-        "abs",
-        "emi",
-    ), "abs_or_emi parameter can only be 'abs' or 'emi'!"
-
-
 def get_q_res(M, E_res, E_0, width_res):
     """
     Computes Fano shape parameter q for the given resonance.

@@ -67,6 +67,35 @@ def l_to_int(l: str) -> int:
         )
 
 
+def K_to_str(K: int) -> str:
+    """
+    Converts photon interaction rank into the corresponding string literal S,P,D,F ...
+
+    Args:
+        l - orbital angular momentum.
+
+    Returns:
+        the string literal for the given momentum.
+    """
+    if K == 0:
+        return "S"
+    elif K == 1:
+        return "P"
+    elif K == 2:
+        return "D"
+    elif K == 3:
+        return "F"
+    elif K == 4:
+        return "G"
+    elif K == 5:
+        return "H"
+    else:
+        raise ValueError(
+            "K_to_str(): invalid or unimplemented K value." "Function was given: K =",
+            K,
+        )
+
+
 def final_sideband_energies_2sim(
     energies_emi: ArrFloat64, energies_abs: ArrFloat64, energies_mode: str
 ) -> ArrFloat64:
@@ -213,3 +242,14 @@ def phase_to_delay(phase: ArrFloat64, omega_diff_hart: float) -> ArrFloat64:
     """
 
     return phase * g_inverse_atomic_frequency_to_attoseconds / omega_diff_hart
+
+
+def assert_abs_or_emi(abs_or_emi: str) -> None:
+    """
+    Asserts that the abs_or_emi parameter takes only the allowed values.
+    """
+
+    assert abs_or_emi in (
+        "abs",
+        "emi",
+    ), "abs_or_emi parameter can only be 'abs' or 'emi'!"

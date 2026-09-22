@@ -5,13 +5,13 @@ from fortran_output_analysis.constants_and_parameters import g_eV_per_Hartree
 from fortran_output_analysis.global_utility import (
     final_sideband_energies_2sim,
     match_matrix_elements_2sim,
+    assert_abs_or_emi,
 )
 from fortran_output_analysis.common_utility import (
     j_from_kappa,
     coulomb_phase,
     final_energies_for_matching_1sim,
     match_matrix_elements_1sim,
-    assert_abs_or_emi,
 )
 from fortran_output_analysis.twophotons.twophotons import (
     TwoPhotons,

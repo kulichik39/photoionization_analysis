@@ -2,7 +2,7 @@ import numpy as np
 from fortran_output_analysis.types import ArrFloat64, ArrComplex128
 
 
-def extract_mat_el_from_verbose_file(file: str, bp_index: int) -> tuple[
+def extract_data_from_verbose_file(file: str, bp_index: int) -> tuple[
     ArrFloat64,
     ArrComplex128,
     ArrFloat64,
